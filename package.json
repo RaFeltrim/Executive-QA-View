@@ -1,7 +1,7 @@
 {
   "name": "studio-qa---cliente-ebv---projeto-cnpj-alfa-numerico_v1",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,20 +13,25 @@
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:mcp": "playwright test tests/mcp/",
+    "mcp:start": "npx @playwright/mcp@latest",
+    "mcp:start:headed": "npx @playwright/mcp@latest --headed",
+    "mcp:start:debug": "npx @playwright/mcp@latest --headed --debug",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^19.2.4",
-    "lucide-react": "^0.563.0",
-    "react-dom": "^19.2.4",
-    "html-to-image": "1.11.11",
     "@google/genai": "^1.39.0",
     "@supabase/supabase-js": "^2.45.0",
+    "html-to-image": "1.11.11",
+    "lucide-react": "^0.563.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "xlsx": "0.18.5"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.63",
     "@playwright/test": "^1.48.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
