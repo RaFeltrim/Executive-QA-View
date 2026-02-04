@@ -180,9 +180,79 @@ const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('sy
 |--------|-----------|--------------|
 | `loadData` | Carrega dados iniciais (Supabase ou localStorage) | `checkSupabaseConnection` |
 | `subscribeToChanges` | Configura realtime listeners | `isOnline`, `reloadFromSupabase` |
-| `persistence` | Salva backup no localStorage | `spreadsheetData` |
+| `persistence` | Salva backup no localStorage | `spreadsheetData`, `hasInitialized` |
 
-#### 3.2.3 Dados Derivados (useMemo)
+#### 3.2.3 Funções Utilitárias (v1.1.0)
+
+> **Adicionadas na versão 1.1.0** para resolver bugs críticos de persistência e formato de data.
+
+##### generateUUID()
+```typescript
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+```
+**Propósito:** Gera identificadores únicos UUID v4 para novos registros.
+
+**Contexto:** Substitui a geração baseada em timestamp (`new-${Date.now()}`) que causava conflitos de ID e perda de dados durante sincronizações concorrentes.
+
+##### formatDateToISO()
+```typescript
+const formatDateToISO = (dateString: string): string => {
+  if (!dateString) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
+  const parts = dateString.split('/');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  return dateString;
+};
+```
+**Propósito:** Converte datas do formato brasileiro (dd/mm/yyyy) para ISO (yyyy-MM-dd).
+
+**Contexto:** Inputs HTML `type="date"` requerem formato ISO. Resolve o erro de console: "The specified value does not conform to the required format 'yyyy-MM-dd'".
+
+##### formatDateToDisplay()
+```typescript
+const formatDateToDisplay = (dateString: string): string => {
+  if (!dateString) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) return dateString;
+  const parts = dateString.split('-');
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  }
+  return dateString;
+};
+```
+**Propósito:** Converte datas do formato ISO (yyyy-MM-dd) para exibição brasileira (dd/mm/yyyy).
+
+**Contexto:** Mantém consistência visual para o usuário brasileiro.
+
+#### 3.2.4 Estado de Inicialização (v1.1.0)
+
+```typescript
+const [hasInitialized, setHasInitialized] = useState(false);
+```
+
+**Propósito:** Controla se a aplicação já completou a carga inicial de dados.
+
+**Contexto:** Resolve bug onde o `useEffect` de persistência salvava array vazio no localStorage antes de carregar dados do Supabase, causando perda de produtos.
+
+**Fluxo:**
+```
+1. App inicia → hasInitialized = false
+2. loadData() executa → dados carregados do Supabase
+3. hasInitialized = true
+4. Effect de persistência → só salva se hasInitialized === true
+```
+
+#### 3.2.5 Dados Derivados (useMemo)
 
 ```typescript
 // Completude das frentes
@@ -539,16 +609,59 @@ export const deleteRow = async (id: string): Promise<void> => {
 };
 ```
 
-##### upsertBatch
+##### upsertBatch (v1.1.0 - Melhorado)
 ```typescript
 export const upsertBatch = async (rows: SpreadsheetRow[]): Promise<void> => {
-  const dbRows = rows.map(mapToDB);
+  // v1.1.0: Validação e chunking para evitar timeouts
+  const validRows = rows.filter(row => row.id && row.id.trim() !== '');
   
-  const { error } = await supabase
-    .from(QA_TABLE)
-    .upsert(dbRows, { onConflict: 'id' });
+  if (validRows.length === 0) {
+    console.log('[upsertBatch] Nenhum registro válido para sincronizar');
+    return;
+  }
   
-  if (error) throw error;
+  const dbRows = validRows.map(mapToDB);
+  const CHUNK_SIZE = 100;
+  
+  for (let i = 0; i < dbRows.length; i += CHUNK_SIZE) {
+    const chunk = dbRows.slice(i, i + CHUNK_SIZE);
+    const { error } = await supabase
+      .from(QA_TABLE)
+      .upsert(chunk, { onConflict: 'id', ignoreDuplicates: false });
+    
+    if (error) {
+      console.error(`[upsertBatch] Erro no chunk ${i}-${i + chunk.length}:`, error);
+      throw error;
+    }
+  }
+  
+  console.log(`[upsertBatch] ${validRows.length} registros sincronizados com sucesso`);
+};
+```
+
+**Melhorias v1.1.0:**
+| Melhoria | Descrição |
+|----------|-----------|
+| **Validação de IDs** | Remove registros com ID vazio antes de sincronizar |
+| **Chunking** | Processa em lotes de 100 para evitar timeout |
+| **Logging** | Mensagens detalhadas para debugging |
+| **ignoreDuplicates: false** | Garante que atualizações sejam aplicadas |
+
+##### insertBatch (v1.1.0 - Melhorado)
+```typescript
+export const insertBatch = async (rows: SpreadsheetRow[]): Promise<void> => {
+  const validRows = rows.filter(row => row.id && row.id.trim() !== '');
+  const dbRows = validRows.map(mapToDB);
+  const CHUNK_SIZE = 100;
+  
+  for (let i = 0; i < dbRows.length; i += CHUNK_SIZE) {
+    const chunk = dbRows.slice(i, i + CHUNK_SIZE);
+    const { error } = await supabase
+      .from(QA_TABLE)
+      .insert(chunk);
+    
+    if (error) throw error;
+  }
 };
 ```
 
@@ -1036,10 +1149,35 @@ describe('frontsCompleteness', () => {
 
 ---
 
+## Apêndice C: Histórico de Versões
+
+### v1.1.0 (04/02/2026) - Bug Fixes Críticos
+
+| Bug | Causa Raiz | Solução |
+|-----|------------|---------|
+| **Produtos desaparecendo ao atualizar** | IDs baseados em timestamp causavam conflitos; effect de persistência sobrescrevia dados durante carregamento | UUID v4 para IDs únicos; flag `hasInitialized` para controlar persistência |
+| **Erro de formato de data no console** | Input `type="date"` HTML requer formato ISO (yyyy-MM-dd), mas dados usavam formato brasileiro (dd/mm/yyyy) | Funções `formatDateToISO()` e `formatDateToDisplay()` para conversão automática |
+
+**Melhorias Adicionais:**
+- Chunking em operações de batch (100 registros por lote)
+- Validação de IDs vazios antes de sincronização
+- Logging detalhado para debugging
+- Tratamento de erro melhorado em `handleUpdateAndSave`
+
+### v1.0.0 (02/02/2026) - Release Inicial
+
+- Implementação completa do sistema de gestão QA
+- Integração com Supabase (PostgreSQL + Realtime)
+- Dashboard executivo com métricas em tempo real
+- Importação via Excel e Scan de IA (Google Gemini)
+- Mapa de stakeholders interativo
+
+---
+
 <div align="center">
 
 **Documentação Técnica - Studio QA**
 
-Versão 1.0 | Fevereiro 2026
+Versão 1.1.0 | Fevereiro 2026
 
 </div>

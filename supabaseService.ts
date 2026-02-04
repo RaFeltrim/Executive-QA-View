@@ -153,30 +153,56 @@ export const deleteAllRows = async (): Promise<void> => {
 
 // Inserir em batch (para importação - após deletar tudo)
 export const insertBatch = async (rows: SpreadsheetRow[]): Promise<void> => {
+  if (rows.length === 0) return;
+  
   const dbRows = rows.map(mapToDB);
   
-  const { error } = await supabase
-    .from(QA_TABLE)
-    .insert(dbRows);
-  
-  if (error) {
-    console.error('Erro no insert batch:', error);
-    throw error;
+  // Insert in chunks of 100 to avoid timeout
+  const chunkSize = 100;
+  for (let i = 0; i < dbRows.length; i += chunkSize) {
+    const chunk = dbRows.slice(i, i + chunkSize);
+    const { error } = await supabase
+      .from(QA_TABLE)
+      .insert(chunk);
+    
+    if (error) {
+      console.error(`Erro no insert batch (chunk ${i}):`, error);
+      throw error;
+    }
   }
 };
 
 // Upsert em batch (para sincronização parcial)
 export const upsertBatch = async (rows: SpreadsheetRow[]): Promise<void> => {
-  const dbRows = rows.map(mapToDB);
+  if (rows.length === 0) return;
   
-  const { error } = await supabase
-    .from(QA_TABLE)
-    .upsert(dbRows, { onConflict: 'id' });
-  
-  if (error) {
-    console.error('Erro no upsert batch:', error);
-    throw error;
+  // Filter out rows without valid IDs
+  const validRows = rows.filter(row => row.id && row.id.trim() !== '');
+  if (validRows.length === 0) {
+    console.warn('Nenhum registro válido para upsert');
+    return;
   }
+  
+  const dbRows = validRows.map(mapToDB);
+  
+  // Upsert in chunks of 100 to avoid timeout
+  const chunkSize = 100;
+  for (let i = 0; i < dbRows.length; i += chunkSize) {
+    const chunk = dbRows.slice(i, i + chunkSize);
+    const { error } = await supabase
+      .from(QA_TABLE)
+      .upsert(chunk, { 
+        onConflict: 'id',
+        ignoreDuplicates: false 
+      });
+    
+    if (error) {
+      console.error(`Erro no upsert batch (chunk ${i}):`, error);
+      throw error;
+    }
+  }
+  
+  console.log(`✅ Upsert concluído: ${validRows.length} registros`);
 };
 
 // Subscribe para Realtime

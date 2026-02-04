@@ -10,7 +10,7 @@
 | **Cliente** | EBV |
 | **Projeto** | CNPJ Alfa Numérico |
 | **Data** | 04 de Fevereiro de 2026 |
-| **Versão** | 1.0.0 |
+| **Versão** | 1.1.0 |
 | **Classificação** | Interno/Corporativo |
 
 </div>
@@ -32,6 +32,39 @@ Este relatório apresenta uma análise completa do sistema **Studio QA**, desenv
 | **Funcionalidades** | ✅ Completas | 4 visualizações principais |
 | **Integração IA** | ✅ Implementada | Google Gemini para scan |
 | **Sincronização** | ✅ Real-time | Supabase Realtime |
+| **Bug Fixes v1.1.0** | ✅ Resolvidos | UUID + formatação de data |
+
+---
+
+## ⚠️ Bug Fixes Críticos (v1.1.0)
+
+### Resumo de Correções
+
+| Bug | Severidade | Status | Descrição |
+|-----|------------|--------|-----------|
+| **QA-BUG-001** | 🔴 Crítico | ✅ Resolvido | Produtos desapareciam ao adicionar nova linha e atualizar |
+| **QA-BUG-002** | 🟡 Médio | ✅ Resolvido | Erro de formato de data no console |
+
+### Detalhamento Técnico
+
+#### QA-BUG-001: Perda de Produtos na Atualização
+- **Sintoma**: Ao adicionar uma nova linha e clicar em "Atualizar Dados", alguns produtos existentes desapareciam
+- **Causa Raiz**: 
+  1. IDs baseados em timestamp (`new-${Date.now()}`) causavam conflitos em operações rápidas
+  2. Effect de persistência salvava array vazio no localStorage antes do carregamento inicial
+- **Solução Implementada**:
+  1. Geração de UUID v4 para IDs únicos e consistentes
+  2. Flag `hasInitialized` para controlar o momento da persistência
+  3. Validação de IDs vazios antes de sincronização
+  4. Chunking em lotes de 100 registros para evitar timeout
+
+#### QA-BUG-002: Formato de Data Inválido
+- **Sintoma**: Erro no console: "The specified value '17/02/2026' does not conform to the required format 'yyyy-MM-dd'"
+- **Causa Raiz**: Inputs HTML `type="date"` requerem formato ISO (yyyy-MM-dd), mas dados eram importados/armazenados no formato brasileiro (dd/mm/yyyy)
+- **Solução Implementada**:
+  1. Função `formatDateToISO()` para conversão automática
+  2. Função `formatDateToDisplay()` para exibição no formato brasileiro
+  3. Aplicação das funções em todos os inputs de data
 
 ---
 

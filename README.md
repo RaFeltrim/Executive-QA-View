@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-Em%20Produção-green.svg)
 ![React](https://img.shields.io/badge/React-19.2.4-61DAFB.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-3178C6.svg)
@@ -381,6 +381,18 @@ npm install
 ---
 
 ## 📝 Changelog
+
+### v1.1.0 (2026-02-04)
+- 🐛 **BUGFIX**: Corrigido problema de produtos desaparecendo ao atualizar dados
+  - Implementado UUID v4 para IDs consistentes
+  - Melhorada validação de dados antes do upsert
+  - Chunks de 100 registros para evitar timeout
+  - Persistência local mais robusta
+- 🐛 **BUGFIX**: Corrigido erro de formato de data no console
+  - Funções `formatDateToISO` e `formatDateToDisplay` implementadas
+  - Conversão automática de dd/mm/yyyy para yyyy-MM-dd
+- 🔧 **MELHORIA**: Mensagens de log para debugging
+- 🔧 **MELHORIA**: Validação de IDs vazios antes de sincronizar
 
 ### v1.0.0 (2026-02-04)
 - ✨ Release inicial

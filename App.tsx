@@ -6,6 +6,43 @@ import {
   FileSpreadsheet, Slash, Plus, Trash2, Scan, Settings, Save, RefreshCw,
   FileUp, FileDown, Cloud, CloudOff, Loader2, MessageSquare
 } from 'lucide-react';
+
+// Utility: Generate UUID v4 for consistent IDs
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+// Utility: Format date to ISO (yyyy-MM-dd) for HTML input
+const formatDateToISO = (dateStr: string): string => {
+  if (!dateStr) return '';
+  // Already in ISO format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  // Convert from dd/mm/yyyy to yyyy-MM-dd
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const [day, month, year] = dateStr.split('/');
+    return `${year}-${month}-${day}`;
+  }
+  // Try to parse other formats
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return date.toISOString().split('T')[0];
+  }
+  return '';
+};
+
+// Utility: Format date from ISO to display (dd/mm/yyyy)
+const formatDateToDisplay = (dateStr: string): string => {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return dateStr;
+};
 import * as htmlToImage from 'html-to-image';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI } from "@google/genai";
@@ -134,24 +171,44 @@ const App: React.FC = () => {
   }, [isOnline, reloadFromSupabase]);
 
   // Persistence effect - backup to localStorage
+  // Only save when we have data or explicitly empty (not on initial load)
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
   useEffect(() => {
-    if (spreadsheetData.length > 0) {
+    if (!isLoading && hasInitialized) {
       localStorage.setItem('ebv_qa_data', JSON.stringify(spreadsheetData));
     }
-  }, [spreadsheetData]);
+    if (!isLoading && !hasInitialized) {
+      setHasInitialized(true);
+    }
+  }, [spreadsheetData, isLoading, hasInitialized]);
 
   const handleUpdateAndSave = async () => {
+    if (spreadsheetData.length === 0) {
+      alert('Nenhum dado para salvar.');
+      return;
+    }
+    
     setIsUpdating(true);
     setSyncStatus('syncing');
     try {
+      // Validate all rows have valid IDs
+      const validData = spreadsheetData.map(row => ({
+        ...row,
+        id: row.id || generateUUID()
+      }));
+      
       if (isOnline) {
-        await upsertBatch(spreadsheetData);
+        await upsertBatch(validData);
       }
-      localStorage.setItem('ebv_qa_data', JSON.stringify(spreadsheetData));
+      localStorage.setItem('ebv_qa_data', JSON.stringify(validData));
+      setSpreadsheetData(validData);
       setSyncStatus('synced');
+      console.log(`✅ ${validData.length} registros salvos com sucesso`);
     } catch (err) {
       console.error('Erro ao salvar:', err);
       setSyncStatus('error');
+      alert('Erro ao sincronizar. Os dados foram salvos localmente.');
     } finally {
       setIsUpdating(false);
     }
@@ -173,7 +230,7 @@ const App: React.FC = () => {
 
         // Map Excel columns to SpreadsheetRow properties
         const mappedData: SpreadsheetRow[] = json.map((row, idx) => ({
-          id: `excel-${Date.now()}-${idx}`,
+          id: generateUUID(),
           product: row['Produto (Frente)'] || row['product'] || '',
           gherkin: row['Gherkin'] || row['gherkin'] || '',
           environment: row['Ambiente'] || row['environment'] || '',
@@ -185,8 +242,8 @@ const App: React.FC = () => {
           role: row['Função'] || row['role'] || '',
           techLeadName: row['Tech Lead'] || row['techLeadName'] || '',
           status: row['Status Agenda'] || row['status'] || 'Pendente',
-          contactDate: row['Acionamento'] || row['contactDate'] || '',
-          date: row['Data Agenda'] || row['date'] || '',
+          contactDate: formatDateToISO(row['Acionamento'] || row['contactDate'] || ''),
+          date: formatDateToISO(row['Data Agenda'] || row['date'] || ''),
           approvalRequestedEmail: row['Aprovação Solicitada por email'] || row['approvalRequestedEmail'] || '',
           approvedByClient: row['Aprovado Pelo Cliente'] || row['approvedByClient'] || '',
           daysBlocked: Number(row['Dias Bloq.'] || row['daysBlocked'] || 0),
@@ -262,7 +319,9 @@ const App: React.FC = () => {
       const extractedData = JSON.parse(response.text || '[]');
       const formattedData = extractedData.map((row: any, idx: number) => ({
         ...row,
-        id: `ai-${Date.now()}-${idx}`,
+        id: generateUUID(),
+        date: formatDateToISO(row.date || ''),
+        contactDate: formatDateToISO(row.contactDate || ''),
         notes: 'Importado via IA Scan'
       }));
 
@@ -399,7 +458,7 @@ const App: React.FC = () => {
 
   const addRow = async () => {
     const newRow: SpreadsheetRow = {
-      id: `new-${Date.now()}`,
+      id: generateUUID(),
       gherkin: '', environment: '', flowKnowledge: '', dataMass: '',
       outOfScope: false, responsibleQA: 'QA', product: '', 
       responsible: '', role: '', techLeadName: '',
@@ -741,7 +800,7 @@ const SpreadsheetView: React.FC<{
                   <td className="p-2 border-r border-slate-100">
                     <input 
                       type="date" 
-                      value={row.contactDate || ''} 
+                      value={formatDateToISO(row.contactDate || '')} 
                       onChange={(e) => onEdit(row.id, 'contactDate', e.target.value)} 
                       className="w-full bg-transparent border-0 text-center font-medium text-slate-600 text-[11px]"
                     />
@@ -749,7 +808,7 @@ const SpreadsheetView: React.FC<{
                   <td className="p-2 border-r border-slate-100">
                     <input 
                       type="date" 
-                      value={row.date || ''} 
+                      value={formatDateToISO(row.date || '')} 
                       onChange={(e) => onEdit(row.id, 'date', e.target.value)} 
                       className="w-full bg-transparent border-0 text-center font-black text-slate-800 text-[11px]"
                     />

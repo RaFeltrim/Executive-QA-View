@@ -403,7 +403,10 @@ Feature: LogbookView - Diário de Bordo
 | Componente | Funcionalidades | Prioridade |
 |------------|-----------------|------------|
 | `types.ts` | Validação de interfaces | Alta |
-| `supabaseService.ts` | CRUD operations | Alta |
+| `supabaseService.ts` | CRUD operations, chunking, validation | Alta |
+| `generateUUID` | Geração de UUIDs válidos | Alta |
+| `formatDateToISO` | Conversão dd/mm/yyyy → yyyy-MM-dd | Alta |
+| `formatDateToDisplay` | Conversão yyyy-MM-dd → dd/mm/yyyy | Alta |
 | `EditableInput` | Renderização, onChange | Média |
 | `EditableSelect` | Renderização, opções | Média |
 | `EditableBoolSelect` | Renderização, valores | Média |
@@ -429,6 +432,61 @@ Feature: LogbookView - Diário de Bordo
 | Export Excel | Exportar e validar conteúdo | Média |
 | Export Imagem | Gerar PNG do painel | Média |
 
+### 7.4 Testes de Regressão (Bug Fixes v1.1.0)
+
+```gherkin
+Feature: Bug Fixes - Persistência de Dados e Formato de Data
+
+  @bugfix @critical @v1.1.0
+  Scenario: BF-TC-001 - Produtos não desaparecem ao adicionar nova linha e atualizar
+    Given existem 10 produtos cadastrados na planilha
+    And estou na aba "Visão Planilha"
+    When clico no botão "Nova Linha"
+    And preencho os dados da nova linha
+    And clico no botão "Atualizar Dados"
+    Then todos os 11 produtos devem estar visíveis na planilha
+    And todos os 11 produtos devem ser persistidos no Supabase
+    And não deve haver mensagem de erro no console
+
+  @bugfix @critical @v1.1.0
+  Scenario: BF-TC-002 - IDs únicos são gerados para novos registros
+    Given estou na aba "Visão Planilha"
+    When adiciono 5 novas linhas rapidamente em sequência
+    Then cada linha deve ter um ID único no formato UUID v4
+    And não deve haver conflitos de ID
+
+  @bugfix @medium @v1.1.0
+  Scenario: BF-TC-003 - Campos de data aceitam formato brasileiro
+    Given estou na aba "Visão Planilha"
+    And existe uma linha com data de acionamento "17/02/2026"
+    When visualizo o campo de data na planilha
+    Then o campo deve exibir a data corretamente
+    And não deve haver erro no console sobre formato de data
+
+  @bugfix @medium @v1.1.0
+  Scenario: BF-TC-004 - Conversão automática de formato de data
+    Given importo um arquivo Excel com datas no formato "dd/mm/yyyy"
+    When os dados são carregados na planilha
+    Then os inputs de data devem funcionar sem erros
+    And as datas devem ser exibidas corretamente no formato brasileiro
+
+  @bugfix @critical @v1.1.0
+  Scenario: BF-TC-005 - Persistência não sobrescreve dados durante carregamento
+    Given existem 50 produtos salvos no Supabase
+    When recarrego a página
+    Then a aplicação deve carregar todos os 50 produtos
+    And o localStorage não deve ser sobrescrito com array vazio
+    And o indicador de sincronização deve mostrar "Sincronizado"
+
+  @bugfix @high @v1.1.0
+  Scenario: BF-TC-006 - Chunking em operações de batch
+    Given existem 250 produtos para sincronizar
+    When clico em "Atualizar Dados"
+    Then os dados devem ser enviados em lotes de 100
+    And não deve haver timeout durante a operação
+    And todos os 250 produtos devem ser sincronizados
+```
+
 ---
 
 ## 📊 Resumo de Cobertura
@@ -440,10 +498,11 @@ Feature: LogbookView - Diário de Bordo
 | MapaStakeholdersView | 4 | 1 | 2 | 1 |
 | LogbookView | 10 | 2 | 5 | 3 |
 | Global | 13 | 4 | 6 | 3 |
-| **TOTAL** | **54** | **17** | **25** | **12** |
+| Bug Fixes v1.1.0 | 6 | 3 | 2 | 1 |
+| **TOTAL** | **60** | **20** | **27** | **13** |
 
 ---
 
-*Documento gerado em: Julho 2025*  
+*Documento atualizado em: Fevereiro 2026*  
 *Autor: QA SDET Specialist*  
-*Versão: 1.0.0*
+*Versão: 1.1.0*
