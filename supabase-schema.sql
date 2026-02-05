@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS qa_spreadsheet_data (
   approved_by_client TEXT,
   
   -- Blockage & Escalation
-  days_blocked INTEGER DEFAULT 0,
+  blocked_since_date DATE, -- Data em que o status foi alterado para "Bloqueada"
+  days_blocked INTEGER DEFAULT 0, -- Calculado a partir de blocked_since_date
   priority TEXT DEFAULT 'Media',
   escalation_reason TEXT, -- Opções fixas: Agenda Indisponível, Sem retorno, Não Compareceu nas agendas, Agenda Inefetiva
   escalation_responsible TEXT,

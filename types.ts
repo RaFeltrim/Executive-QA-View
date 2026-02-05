@@ -48,7 +48,8 @@ export interface SpreadsheetRow {
   approvedByClient?: 'SIM' | 'NÃO' | ''; // Aprovado Pelo Cliente
   
   // Blockage & Escalation
-  daysBlocked?: number; // Dias Bloqueado (calculado automaticamente a partir de contactDate)
+  blockedSinceDate?: string; // Data em que o status foi alterado para "Bloqueada"
+  daysBlocked?: number; // Dias Bloqueado (calculado automaticamente a partir de blockedSinceDate)
   priority?: string; // Prioridade: Baixa, Media, Alta
   escalationReason?: string; // Motivo do Bloqueio / Escalada (opções fixas da aba Base)
   escalationResponsible?: string; // Responsável pelo Escalation

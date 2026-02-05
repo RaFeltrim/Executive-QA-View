@@ -26,6 +26,7 @@ const mapFromDB = (row: any): SpreadsheetRow => ({
   techLeadName: row.tech_lead_name || '',
   approvalRequestedEmail: row.approval_requested_email || '',
   approvedByClient: row.approved_by_client || '',
+  blockedSinceDate: row.blocked_since_date || '',
   daysBlocked: row.days_blocked || 0,
   priority: row.priority || 'Media',
   escalationReason: row.escalation_reason || '',
@@ -60,6 +61,7 @@ const mapToDB = (row: SpreadsheetRow): any => ({
   tech_lead_name: row.techLeadName,
   approval_requested_email: row.approvalRequestedEmail,
   approved_by_client: row.approvedByClient,
+  blocked_since_date: row.blockedSinceDate || null, // DATE não aceita string vazia
   days_blocked: row.daysBlocked,
   priority: row.priority,
   escalation_reason: row.escalationReason,
@@ -127,6 +129,8 @@ export const updateRow = async (id: string, updates: Partial<SpreadsheetRow>): P
   if (updates.techLeadName !== undefined) dbUpdates.tech_lead_name = updates.techLeadName;
   if (updates.approvalRequestedEmail !== undefined) dbUpdates.approval_requested_email = updates.approvalRequestedEmail;
   if (updates.approvedByClient !== undefined) dbUpdates.approved_by_client = updates.approvedByClient;
+  // blockedSinceDate: enviar null se vazio (campo DATE não aceita string vazia)
+  if (updates.blockedSinceDate !== undefined) dbUpdates.blocked_since_date = updates.blockedSinceDate || null;
   if (updates.daysBlocked !== undefined) dbUpdates.days_blocked = updates.daysBlocked;
   if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
   if (updates.escalationReason !== undefined) dbUpdates.escalation_reason = updates.escalationReason;

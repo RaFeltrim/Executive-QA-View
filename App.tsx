@@ -184,10 +184,17 @@ const App: React.FC = () => {
           return [newRow, ...prev];
         });
       },
-      // On Update
+      // On Update - preserva dateHistory local se o banco não tiver
       (updatedRow) => {
         setSpreadsheetData(prev => 
-          prev.map(r => r.id === updatedRow.id ? updatedRow : r)
+          prev.map(r => {
+            if (r.id !== updatedRow.id) return r;
+            // Preserva o dateHistory local se existir e o do banco estiver vazio
+            const preservedHistory = (r.dateHistory && r.dateHistory.length > 0 && (!updatedRow.dateHistory || updatedRow.dateHistory.length === 0))
+              ? r.dateHistory 
+              : updatedRow.dateHistory;
+            return { ...updatedRow, dateHistory: preservedHistory };
+          })
         );
       },
       // On Delete
@@ -496,12 +503,13 @@ const App: React.FC = () => {
     goLiveDate: '01.JUL.2026'
   }), [frontsCompleteness, effectivenessData, escalations]);
 
-  // Função auxiliar: calcular dias bloqueados a partir da data de acionamento
-  const calculateDaysBlocked = (contactDate: string, status: string): number => {
-    if (!contactDate || status === 'Realizada') return 0;
-    const contact = new Date(contactDate);
+  // Função auxiliar: calcular dias bloqueados a partir da data em que foi bloqueado
+  const calculateDaysBlocked = (blockedSinceDate: string | undefined, status: string): number => {
+    // Só calcula se o status for "Bloqueada" e tiver data de bloqueio
+    if (!blockedSinceDate || status !== 'Bloqueada') return 0;
+    const blockedDate = new Date(blockedSinceDate);
     const today = new Date();
-    const diffTime = today.getTime() - contact.getTime();
+    const diffTime = today.getTime() - blockedDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
   };
@@ -522,14 +530,22 @@ const App: React.FC = () => {
         }
       }
       
-      // LÓGICA: Calcular dias bloqueados automaticamente quando contactDate é alterado
-      if (field === 'contactDate') {
-        updatedRow.daysBlocked = calculateDaysBlocked(value, r.status);
+      // LÓGICA: Quando status muda para 'Bloqueada', registra a data de início do bloqueio
+      if (field === 'status' && value === 'Bloqueada' && r.status !== 'Bloqueada') {
+        const today = new Date().toISOString().split('T')[0]; // formato yyyy-mm-dd
+        updatedRow.blockedSinceDate = today;
+        updatedRow.daysBlocked = 0; // Começa em 0, vai incrementando
+      }
+      
+      // LÓGICA: Quando status sai de 'Bloqueada', limpa blockedSinceDate e daysBlocked
+      if (field === 'status' && r.status === 'Bloqueada' && value !== 'Bloqueada') {
+        updatedRow.blockedSinceDate = undefined;
+        updatedRow.daysBlocked = 0;
       }
       
       // LÓGICA: Recalcular dias bloqueados quando status muda
-      if (field === 'status' && r.contactDate) {
-        updatedRow.daysBlocked = calculateDaysBlocked(r.contactDate, value);
+      if (field === 'status') {
+        updatedRow.daysBlocked = calculateDaysBlocked(updatedRow.blockedSinceDate, value);
       }
       
       return updatedRow;
@@ -537,15 +553,42 @@ const App: React.FC = () => {
     
     if (isOnline) {
       try {
+        const row = spreadsheetData.find(r => r.id === id);
+        
         // Se mudou a DATA e status é Inefetiva, atualizar dateHistory no banco
         if (field === 'date') {
-          const row = spreadsheetData.find(r => r.id === id);
           if (row?.status === 'Inefetiva' && row?.date && row.date !== value) {
             const newHistory = [...(row.dateHistory || []), row.date];
             await dbUpdateRow(id, { [field]: value, dateHistory: newHistory });
             return;
           }
         }
+        
+        // Para mudanças de status, tratar casos especiais
+        if (field === 'status') {
+          const updates: Partial<SpreadsheetRow> = { status: value };
+          
+          // Preservar dateHistory se existir
+          if (row?.dateHistory && row.dateHistory.length > 0) {
+            updates.dateHistory = row.dateHistory;
+          }
+          
+          // Se mudou PARA Bloqueada, registrar data de início
+          if (value === 'Bloqueada' && row?.status !== 'Bloqueada') {
+            updates.blockedSinceDate = new Date().toISOString().split('T')[0];
+            updates.daysBlocked = 0;
+          }
+          
+          // Se saiu DE Bloqueada, limpar
+          if (row?.status === 'Bloqueada' && value !== 'Bloqueada') {
+            updates.blockedSinceDate = undefined;
+            updates.daysBlocked = 0;
+          }
+          
+          await dbUpdateRow(id, updates);
+          return;
+        }
+        
         await dbUpdateRow(id, { [field]: value });
       } catch (err) {
         console.error('Erro ao atualizar no Supabase:', err);
@@ -563,6 +606,7 @@ const App: React.FC = () => {
       responsible: '', role: '', techLeadName: '',
       status: 'Pendente', contactDate: '', date: '', 
       dateHistory: [],
+      blockedSinceDate: '',
       daysBlocked: 0, priority: 'Media', notes: '', escalationReason: '',
       escalationResponsible: '', escalationStatus: ' ', escalationObs: '',
       approvalRequestedEmail: '', approvedByClient: ''
