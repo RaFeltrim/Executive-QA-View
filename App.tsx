@@ -763,35 +763,35 @@ const SpreadsheetView: React.FC<{
                   <td className="p-2 border-r border-slate-100" data-field="gherkin">
                     <EditableSelect value={row.gherkin || ''} onChange={(v) => onEdit(row.id, 'gherkin', v)} />
                   </td>
-                  </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="environment">
                     <EditableSelect value={row.environment || ''} onChange={(v) => onEdit(row.id, 'environment', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="flowKnowledge">
                     <EditableSelect value={row.flowKnowledge || ''} onChange={(v) => onEdit(row.id, 'flowKnowledge', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="dataMass">
                     <EditableSelect value={row.dataMass || ''} onChange={(v) => onEdit(row.id, 'dataMass', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100 text-center">
-                    <input type="checkbox" checked={row.outOfScope} onChange={(e) => onEdit(row.id, 'outOfScope', e.target.checked)} className="w-4 h-4 rounded" />
+                  <td className="p-2 border-r border-slate-100 text-center" data-field="outOfScope">
+                    <input type="checkbox" checked={row.outOfScope} onChange={(e) => onEdit(row.id, 'outOfScope', e.target.checked)} className="w-4 h-4 rounded" data-testid="checkbox-out-of-scope" />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="responsibleQA">
                     <EditableInput value={row.responsibleQA} onChange={(v) => onEdit(row.id, 'responsibleQA', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="responsible">
                     <EditableInput value={row.responsible} onChange={(v) => onEdit(row.id, 'responsible', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="role">
                     <EditableInput value={row.role || ''} onChange={(v) => onEdit(row.id, 'role', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="techLeadName">
                     <EditableInput value={row.techLeadName || ''} onChange={(v) => onEdit(row.id, 'techLeadName', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="status">
                      <select 
                       value={row.status} 
                       onChange={(e) => onEdit(row.id, 'status', e.target.value)}
+                      data-testid="select-status"
                       className={`w-full p-1 rounded font-black text-[10px] uppercase border-0 ${
                         row.status === 'Realizada' ? 'bg-green-50 text-green-700' : 
                         row.status === 'Inefetiva' ? 'bg-amber-50 text-amber-700' : 
@@ -804,19 +804,21 @@ const SpreadsheetView: React.FC<{
                       <option value="Bloqueada">Bloqueada</option>
                     </select>
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="contactDate">
                     <input 
                       type="date" 
                       value={formatDateToISO(row.contactDate || '')} 
                       onChange={(e) => onEdit(row.id, 'contactDate', e.target.value)} 
+                      data-testid="input-contact-date"
                       className="w-full bg-transparent border-0 text-center font-medium text-slate-600 text-[11px]"
                     />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="date">
                     <input 
                       type="date" 
                       value={formatDateToISO(row.date || '')} 
                       onChange={(e) => onEdit(row.id, 'date', e.target.value)} 
+                      data-testid="input-agenda-date"
                       className="w-full bg-transparent border-0 text-center font-black text-slate-800 text-[11px]"
                     />
                   </td>
