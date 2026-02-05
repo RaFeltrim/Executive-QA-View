@@ -512,21 +512,19 @@ const App: React.FC = () => {
       
       let updatedRow = { ...r, [field]: value };
       
-      // LÓGICA ESPECIAL: Quando status muda para 'Inefetiva', move a data atual para o histórico
-      if (field === 'status' && value === 'Inefetiva' && r.date) {
+      // LÓGICA ESPECIAL: Quando a DATA muda e o status é 'Inefetiva', move a data ANTERIOR para o histórico
+      // Isso permite que o usuário veja as datas das agendas inefetivas anteriores
+      if (field === 'date' && r.status === 'Inefetiva' && r.date && r.date !== value) {
         const currentHistory = r.dateHistory || [];
-        // Só adiciona se a data ainda não estiver no histórico
+        // Só adiciona se a data anterior ainda não estiver no histórico
         if (!currentHistory.includes(r.date)) {
           updatedRow.dateHistory = [...currentHistory, r.date];
         }
       }
       
-      // LÓGICA: Quando status sai de 'Inefetiva', limpa o histórico se necessário
-      if (field === 'status' && r.status === 'Inefetiva' && value !== 'Inefetiva') {
-        // Mantém o histórico, apenas limpa se for 'Realizada'
-        if (value === 'Realizada') {
-          updatedRow.dateHistory = [];
-        }
+      // LÓGICA: Quando status muda para 'Realizada', limpa o histórico
+      if (field === 'status' && value === 'Realizada') {
+        updatedRow.dateHistory = [];
       }
       
       // LÓGICA: Calcular dias bloqueados automaticamente quando contactDate é alterado
@@ -544,14 +542,19 @@ const App: React.FC = () => {
     
     if (isOnline) {
       try {
-        // Se mudou para Inefetiva, também atualizar o dateHistory no banco
-        if (field === 'status' && value === 'Inefetiva') {
+        // Se mudou a DATA e status é Inefetiva, atualizar dateHistory no banco
+        if (field === 'date') {
           const row = spreadsheetData.find(r => r.id === id);
-          if (row?.date) {
+          if (row?.status === 'Inefetiva' && row?.date && row.date !== value) {
             const newHistory = [...(row.dateHistory || []), row.date];
             await dbUpdateRow(id, { [field]: value, dateHistory: newHistory });
             return;
           }
+        }
+        // Se mudou status para Realizada, limpar histórico
+        if (field === 'status' && value === 'Realizada') {
+          await dbUpdateRow(id, { [field]: value, dateHistory: [] });
+          return;
         }
         await dbUpdateRow(id, { [field]: value });
       } catch (err) {
