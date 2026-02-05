@@ -994,10 +994,10 @@ const ExecutivePanelView: React.FC<{
             <div className="space-y-6" data-testid="fronts-completeness">
               <h4 className="text-xl font-black text-slate-800 flex items-center gap-3"><Target className="text-blue-600" /> Plenitude Técnica (Evolução por Frente)</h4>
               {fronts.map(f => (
-                <div key={f.frontName} data-testid={`front-${f.frontName.replace(/\s/g, '-').toLowerCase()}`} className={`p-6 rounded-2xl border ${f.outOfScope ? 'bg-slate-50 opacity-50' : 'bg-white shadow-sm space-y-4'}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-black text-slate-800 text-lg uppercase">{f.frontName}</p>
+                <div key={f.frontName} data-testid={`front-${f.frontName.replace(/\s/g, '-').toLowerCase()}`} className={`p-6 rounded-2xl border ${f.outOfScope ? 'bg-slate-50 opacity-50' : 'bg-white shadow-sm space-y-4'} overflow-hidden`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-slate-800 text-lg uppercase truncate" title={f.frontName}>{f.frontName}</p>
                       {!f.outOfScope && (
                         <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-1">
                           Evolução Consolidada: {f.completionPercentage}%
@@ -1035,20 +1035,20 @@ const ExecutivePanelView: React.FC<{
 
             <div className="space-y-6">
                <h4 className="text-xl font-black text-slate-800 flex items-center gap-3"><Users2 className="text-blue-600" /> Agenda & Stakeholders</h4>
-               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                 <table className="w-full text-[11px]">
+               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 overflow-hidden">
+                 <table className="w-full text-[11px] table-fixed">
                    <thead>
                      <tr className="text-slate-400 font-black uppercase border-b border-slate-100">
-                       <th className="p-2 text-left">Stakeholder</th>
-                       <th className="p-2 text-center">Realizada</th>
-                       <th className="p-2 text-center">Pendente</th>
-                       <th className="p-2 text-center">Inefetiva</th>
+                       <th className="p-2 text-left w-[40%]">Stakeholder</th>
+                       <th className="p-2 text-center w-[20%]">Realizada</th>
+                       <th className="p-2 text-center w-[20%]">Pendente</th>
+                       <th className="p-2 text-center w-[20%]">Inefetiva</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-50">
                      {effectiveness.map(m => (
                        <tr key={m.person}>
-                         <td className="p-2 font-black text-slate-700">{m.person}</td>
+                         <td className="p-2 font-black text-slate-700 truncate" title={m.person}>{m.person}</td>
                          <td className="p-2 text-center"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-lg font-black">{m.conductedAgendas}</span></td>
                          <td className="p-2 text-center"><span className="bg-red-100 text-red-700 px-2 py-1 rounded-lg font-black">{m.pendingAgendas}</span></td>
                          <td className="p-2 text-center"><span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg font-black">{m.ineffectiveAgendas}</span></td>
@@ -1060,32 +1060,32 @@ const ExecutivePanelView: React.FC<{
 
                <h4 className="text-xl font-black text-slate-800 flex items-center gap-3 mt-8"><AlertTriangle className="text-red-600" /> Escalation - Monitoramento</h4>
                <div className="bg-white rounded-2xl border border-red-50 overflow-hidden shadow-md">
-                 <table className="w-full text-[9px]">
+                 <table className="w-full text-[9px] table-fixed">
                    <thead className="bg-red-50 text-red-700 font-black uppercase">
                      <tr>
-                       <th className="p-2 text-left">QA</th>
-                       <th className="p-2 text-left">Frente</th>
-                       <th className="p-2 text-left">Stakeholder</th>
-                       <th className="p-2 text-center">Dias</th>
-                       <th className="p-2 text-center">Prior.</th>
-                       <th className="p-2 text-left">Resp. Esc.</th>
-                       <th className="p-2 text-left">Status</th>
-                       <th className="p-2 text-left">OBS</th>
+                       <th className="p-2 text-left w-[80px]">QA</th>
+                       <th className="p-2 text-left w-[120px]">Frente</th>
+                       <th className="p-2 text-left w-[100px]">Stakeholder</th>
+                       <th className="p-2 text-center w-[50px]">Dias</th>
+                       <th className="p-2 text-center w-[60px]">Prior.</th>
+                       <th className="p-2 text-left w-[100px]">Resp. Esc.</th>
+                       <th className="p-2 text-left w-[90px]">Status</th>
+                       <th className="p-2 text-left w-[150px]">OBS</th>
                      </tr>
                    </thead>
                      <tbody className="divide-y divide-red-50">
                        {escalations.map(e => (
                          <tr key={e.id}>
-                           <td className="p-2 font-black text-slate-500 whitespace-nowrap">{e.qa}</td>
-                           <td className="p-2 font-bold text-slate-700">{e.product}</td>
-                           <td className="p-2">
-                              <p className="font-black text-red-600 uppercase">{e.stakeholder}</p>
+                           <td className="p-2 font-black text-slate-500 whitespace-nowrap max-w-[80px] truncate" title={e.qa}>{e.qa}</td>
+                           <td className="p-2 font-bold text-slate-700 max-w-[120px] truncate" title={e.product}>{e.product}</td>
+                           <td className="p-2 max-w-[100px]">
+                              <p className="font-black text-red-600 uppercase truncate" title={e.stakeholder}>{e.stakeholder}</p>
                            </td>
-                           <td className="p-2 text-center font-black text-red-600">{e.daysBlocked}d</td>
+                           <td className="p-2 text-center font-black text-red-600 whitespace-nowrap">{e.daysBlocked}d</td>
                            <td className="p-2 text-center">
                              <span className="px-2 py-1 rounded-full bg-red-600 text-white font-black text-[8px] uppercase">{e.priority}</span>
                            </td>
-                           <td className="p-2 font-bold text-slate-600">{e.responsible}</td>
+                           <td className="p-2 font-bold text-slate-600 max-w-[100px] truncate" title={e.responsible}>{e.responsible}</td>
                            <td className="p-2 font-black text-amber-600 uppercase whitespace-nowrap">{e.status}</td>
                            <td className="p-2 text-slate-500 italic max-w-[150px] truncate" title={e.obs}>{e.obs}</td>
                          </tr>
