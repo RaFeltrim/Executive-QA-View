@@ -21,7 +21,7 @@ test.describe('ExecutivePanelView - KPI Cards', () => {
   });
 
   test('EP-TC-003: Should display Stakeholders KPI', async ({ page }) => {
-    await expect(page.getByText('Stakeholders')).toBeVisible();
+    await expect(page.getByTestId('kpi-stakeholders')).toBeVisible();
   });
 
   test('EP-TC-004: Should display status indicator', async ({ page }) => {
@@ -80,10 +80,10 @@ test.describe('ExecutivePanelView - Stakeholder Table', () => {
   });
 
   test('EP-TC-010: Should display table headers', async ({ page }) => {
-    await expect(page.getByText('Stakeholder')).toBeVisible();
-    await expect(page.getByText('Realizada')).toBeVisible();
-    await expect(page.getByText('Pendente')).toBeVisible();
-    await expect(page.getByText('Inefetiva')).toBeVisible();
+    await expect(page.locator('th:has-text("Stakeholder")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Realizada")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Pendente")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Inefetiva")').first()).toBeVisible();
   });
 });
 

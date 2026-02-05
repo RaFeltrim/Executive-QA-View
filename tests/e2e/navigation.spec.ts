@@ -35,7 +35,7 @@ test.describe('Navigation - Tab Switching', () => {
   test('NAV-004: Should navigate to Logbook', async ({ page }) => {
     await page.getByRole('button', { name: /Diário de Bordo/i }).click();
     
-    await expect(page.getByText('Diário de Bordo QA')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Diário de Bordo QA' })).toBeVisible();
     await expect(page.getByText('Atividades Recentes')).toBeVisible();
   });
 

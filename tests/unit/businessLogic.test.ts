@@ -17,19 +17,24 @@ describe('Business Logic - Fronts Completeness Calculation', () => {
         fronts[name] = {
           frontName: name,
           flowKnowledge: row.flowKnowledge === 'OK',
-          dataMassInfo: row.dataMass === 'OK',
           gherkinReady: row.gherkin === 'OK',
-          envAccess: row.environment === 'OK',
+          evidenciamentoAxisOk: row.evidenciamentoAxis === 'Evidencias QA - OK' || row.environment === 'OK',
+          insumosParaTestesOk: row.insumosParaTestes === 'OK' || row.dataMass === 'OK',
           approvalRequestedEmail: row.approvalRequestedEmail === 'SIM',
           approvedByClient: row.approvedByClient === 'SIM',
           completionPercentage: 0,
-          outOfScope: row.outOfScope
+          outOfScope: row.outOfScope,
+          // Campos legados
+          dataMassInfo: row.dataMass === 'OK',
+          envAccess: row.environment === 'OK'
         };
       } else {
         if (row.flowKnowledge === 'OK') fronts[name].flowKnowledge = true;
         if (row.dataMass === 'OK') fronts[name].dataMassInfo = true;
         if (row.gherkin === 'OK') fronts[name].gherkinReady = true;
         if (row.environment === 'OK') fronts[name].envAccess = true;
+        if (row.evidenciamentoAxis === 'Evidencias QA - OK') fronts[name].evidenciamentoAxisOk = true;
+        if (row.insumosParaTestes === 'OK') fronts[name].insumosParaTestesOk = true;
         if (row.approvalRequestedEmail === 'SIM') fronts[name].approvalRequestedEmail = true;
         if (row.approvedByClient === 'SIM') fronts[name].approvedByClient = true;
         if (row.outOfScope) fronts[name].outOfScope = true;
@@ -61,8 +66,8 @@ describe('Business Logic - Fronts Completeness Calculation', () => {
       dataMass: 'NOK',
       gherkin: 'NOK',
       environment: 'NOK',
-      approvalRequestedEmail: 'Não',
-      approvedByClient: 'Não'
+      approvalRequestedEmail: 'NÃO',
+      approvedByClient: 'NÃO'
     }];
 
     const result = calculateCompleteness(rows);
@@ -105,8 +110,8 @@ describe('Business Logic - Fronts Completeness Calculation', () => {
       dataMass: 'OK',
       gherkin: 'OK',
       environment: 'NOK',
-      approvalRequestedEmail: 'Não',
-      approvedByClient: 'Não'
+      approvalRequestedEmail: 'NÃO',
+      approvedByClient: 'NÃO'
     }];
 
     const result = calculateCompleteness(rows);

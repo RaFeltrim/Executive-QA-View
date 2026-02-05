@@ -17,18 +17,26 @@ export interface QATask {
 export interface SpreadsheetRow {
   id: string;
   // Metadata & Tracking
-  contactDate?: string; // Data Acionamento
-  date: string; // Data Agenda
+  contactDate?: string; // Data Acionamento - inicia contagem de dias bloqueados
+  date: string; // Data Agenda (atual)
+  dateHistory?: string[]; // Histórico de datas anteriores (inefetivas - aparecem riscadas)
   status: string; // Status Agenda: Realizada, Inefetiva, Pendente, Bloqueada
   responsibleQA: string; // Resp. QA
   
   // Product / Front Details
   product: string; // Stakeholder / Produto (Frente)
   flowKnowledge?: 'OK' | 'NOK' | ''; // Conhecimento Fluxo
-  dataMass?: 'OK' | 'NOK' | ''; // Massa de Dados
   gherkin?: 'OK' | 'NOK' | ''; // Gherkin
-  environment?: 'OK' | 'NOK' | ''; // Ambiente
   outOfScope?: boolean; // Fora Escopo
+  
+  // Novos campos da planilha atualizada
+  evidenciamentoAxis?: string; // Evidenciamento Axis: Ambiente Liberado, Bloqueado - bug no Amb, Evidencias Disponibilizadas, Evidencias QA - OK, Impactado - Sem Insumos
+  insumosParaTestes?: string; // Insumos para Testes: Responsável QA, Responsável Lider Tecnico, etc.
+  acionamento?: string; // Acionamento: Responsável QA, GP - Necessário Envolver Áreas, etc.
+  
+  // Campos legados (mantidos para retrocompatibilidade)
+  dataMass?: 'OK' | 'NOK' | ''; // @deprecated - usar insumosParaTestes
+  environment?: 'OK' | 'NOK' | ''; // @deprecated - usar evidenciamentoAxis
   
   // Stakeholder Details
   responsible: string; // Stakeholder Name
@@ -36,13 +44,13 @@ export interface SpreadsheetRow {
   techLeadName?: string; // Tech Lead (for the Map)
 
   // Approval Details
-  approvalRequestedEmail?: 'SIM' | 'Não' | ''; // Aprovação Solicitada por email
-  approvedByClient?: 'SIM' | 'Não' | ''; // Aprovado Pelo Cliente
+  approvalRequestedEmail?: 'SIM' | 'NÃO' | ''; // Aprovação Solicitada por email
+  approvedByClient?: 'SIM' | 'NÃO' | ''; // Aprovado Pelo Cliente
   
   // Blockage & Escalation
-  daysBlocked?: number; // Dias Bloqueado
-  priority?: string; // Prioridade
-  escalationReason?: string; // Motivo do Bloqueio / Escalada
+  daysBlocked?: number; // Dias Bloqueado (calculado automaticamente a partir de contactDate)
+  priority?: string; // Prioridade: Baixa, Media, Alta
+  escalationReason?: string; // Motivo do Bloqueio / Escalada (opções fixas da aba Base)
   escalationResponsible?: string; // Responsável pelo Escalation
   escalationStatus?: string; // Status do Escalation
   escalationObs?: string; // OBS do Escalation
@@ -61,13 +69,16 @@ export interface EffectivenessMetric {
 export interface FrontCompleteness {
   frontName: string;
   flowKnowledge: boolean;
-  dataMassInfo: boolean;
   gherkinReady: boolean;
-  envAccess: boolean;
+  evidenciamentoAxisOk: boolean; // Novo: substitui envAccess
+  insumosParaTestesOk: boolean; // Novo: substitui dataMassInfo
   approvalRequestedEmail: boolean;
   approvedByClient: boolean;
   completionPercentage: number;
   outOfScope?: boolean;
+  // Campos legados para retrocompatibilidade
+  dataMassInfo?: boolean; // @deprecated
+  envAccess?: boolean; // @deprecated
 }
 
 export interface EscalationItem {

@@ -229,9 +229,8 @@ export { expect };
  * Helper para criar contexto de teste isolado
  */
 export async function createIsolatedContext(browser: BrowserContext) {
-  const context = await browser.newContext({
-    viewport: { width: 1920, height: 1080 },
-    storageState: undefined // Limpa localStorage
-  });
-  return context;
+  // browser aqui é na verdade um BrowserContext do Playwright test,
+  // que não tem newContext. Use a página do contexto existente.
+  // Para testes que precisam de um contexto isolado, use o fixture browser diretamente.
+  return browser;
 }

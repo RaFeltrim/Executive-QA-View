@@ -6,14 +6,21 @@ const mapFromDB = (row: any): SpreadsheetRow => ({
   id: row.id,
   contactDate: row.contact_date || '',
   date: row.date || '',
+  dateHistory: row.date_history ? JSON.parse(row.date_history) : [],
   status: row.status || 'Pendente',
   responsibleQA: row.responsible_qa || '',
   product: row.product || '',
   flowKnowledge: row.flow_knowledge || '',
-  dataMass: row.data_mass || '',
   gherkin: row.gherkin || '',
-  environment: row.environment || '',
   outOfScope: row.out_of_scope || false,
+  // Novos campos
+  evidenciamentoAxis: row.evidenciamento_axis || '',
+  insumosParaTestes: row.insumos_para_testes || '',
+  acionamento: row.acionamento || '',
+  // Campos legados (retrocompatibilidade)
+  dataMass: row.data_mass || '',
+  environment: row.environment || '',
+  // Stakeholder
   responsible: row.responsible || '',
   role: row.role || '',
   techLeadName: row.tech_lead_name || '',
@@ -33,14 +40,21 @@ const mapToDB = (row: SpreadsheetRow): any => ({
   id: row.id,
   contact_date: row.contactDate,
   date: row.date,
+  date_history: row.dateHistory ? JSON.stringify(row.dateHistory) : '[]',
   status: row.status,
   responsible_qa: row.responsibleQA,
   product: row.product,
   flow_knowledge: row.flowKnowledge,
-  data_mass: row.dataMass,
   gherkin: row.gherkin,
-  environment: row.environment,
   out_of_scope: row.outOfScope,
+  // Novos campos
+  evidenciamento_axis: row.evidenciamentoAxis,
+  insumos_para_testes: row.insumosParaTestes,
+  acionamento: row.acionamento,
+  // Campos legados (retrocompatibilidade)
+  data_mass: row.dataMass,
+  environment: row.environment,
+  // Stakeholder
   responsible: row.responsible,
   role: row.role,
   tech_lead_name: row.techLeadName,
@@ -93,14 +107,21 @@ export const updateRow = async (id: string, updates: Partial<SpreadsheetRow>): P
   // Mapear apenas os campos que foram atualizados
   if (updates.contactDate !== undefined) dbUpdates.contact_date = updates.contactDate;
   if (updates.date !== undefined) dbUpdates.date = updates.date;
+  if (updates.dateHistory !== undefined) dbUpdates.date_history = JSON.stringify(updates.dateHistory);
   if (updates.status !== undefined) dbUpdates.status = updates.status;
   if (updates.responsibleQA !== undefined) dbUpdates.responsible_qa = updates.responsibleQA;
   if (updates.product !== undefined) dbUpdates.product = updates.product;
   if (updates.flowKnowledge !== undefined) dbUpdates.flow_knowledge = updates.flowKnowledge;
-  if (updates.dataMass !== undefined) dbUpdates.data_mass = updates.dataMass;
   if (updates.gherkin !== undefined) dbUpdates.gherkin = updates.gherkin;
-  if (updates.environment !== undefined) dbUpdates.environment = updates.environment;
   if (updates.outOfScope !== undefined) dbUpdates.out_of_scope = updates.outOfScope;
+  // Novos campos
+  if (updates.evidenciamentoAxis !== undefined) dbUpdates.evidenciamento_axis = updates.evidenciamentoAxis;
+  if (updates.insumosParaTestes !== undefined) dbUpdates.insumos_para_testes = updates.insumosParaTestes;
+  if (updates.acionamento !== undefined) dbUpdates.acionamento = updates.acionamento;
+  // Campos legados (retrocompatibilidade)
+  if (updates.dataMass !== undefined) dbUpdates.data_mass = updates.dataMass;
+  if (updates.environment !== undefined) dbUpdates.environment = updates.environment;
+  // Stakeholder
   if (updates.responsible !== undefined) dbUpdates.responsible = updates.responsible;
   if (updates.role !== undefined) dbUpdates.role = updates.role;
   if (updates.techLeadName !== undefined) dbUpdates.tech_lead_name = updates.techLeadName;

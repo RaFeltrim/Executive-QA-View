@@ -64,7 +64,7 @@ describe('Types - SpreadsheetRow', () => {
       outOfScope: false,
       techLeadName: 'Maria Tech',
       approvalRequestedEmail: 'SIM',
-      approvedByClient: 'Não',
+      approvedByClient: 'NÃO',
       daysBlocked: 5,
       priority: 'Alta',
       escalationReason: 'Aguardando ambiente',
@@ -137,13 +137,16 @@ describe('Types - FrontCompleteness', () => {
     const front: FrontCompleteness = {
       frontName: 'Cadastro PJ',
       flowKnowledge: true,
-      dataMassInfo: true,
       gherkinReady: false,
-      envAccess: true,
+      evidenciamentoAxisOk: true,
+      insumosParaTestesOk: true,
       approvalRequestedEmail: true,
       approvedByClient: false,
       completionPercentage: 66, // 4/6 * 100
-      outOfScope: false
+      outOfScope: false,
+      // Campos legados
+      dataMassInfo: true,
+      envAccess: true
     };
 
     expect(front.frontName).toBe('Cadastro PJ');
@@ -154,13 +157,16 @@ describe('Types - FrontCompleteness', () => {
     const front: FrontCompleteness = {
       frontName: 'Legacy System',
       flowKnowledge: false,
-      dataMassInfo: false,
       gherkinReady: false,
-      envAccess: false,
+      evidenciamentoAxisOk: false,
+      insumosParaTestesOk: false,
       approvalRequestedEmail: false,
       approvedByClient: false,
       completionPercentage: 0,
-      outOfScope: true
+      outOfScope: true,
+      // Campos legados
+      dataMassInfo: false,
+      envAccess: false
     };
 
     expect(front.outOfScope).toBe(true);
@@ -171,12 +177,15 @@ describe('Types - FrontCompleteness', () => {
     const front: FrontCompleteness = {
       frontName: 'Complete Front',
       flowKnowledge: true,
-      dataMassInfo: true,
       gherkinReady: true,
-      envAccess: true,
+      evidenciamentoAxisOk: true,
+      insumosParaTestesOk: true,
       approvalRequestedEmail: true,
       approvedByClient: true,
-      completionPercentage: 100
+      completionPercentage: 100,
+      // Campos legados
+      dataMassInfo: true,
+      envAccess: true
     };
 
     expect(front.completionPercentage).toBe(100);

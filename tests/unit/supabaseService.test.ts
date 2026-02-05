@@ -114,7 +114,7 @@ describe('SupabaseService - mapToDB', () => {
       role: 'PO',
       techLeadName: 'Maria Tech',
       approvalRequestedEmail: 'SIM',
-      approvedByClient: 'Não',
+      approvedByClient: 'NÃO',
       daysBlocked: 5,
       priority: 'Alta',
       escalationReason: 'Aguardando ambiente',

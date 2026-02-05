@@ -10,7 +10,21 @@
  * @see https://github.com/playwright-community/mcp
  */
 
-import { PlaywrightMCPConfig } from '@playwright/mcp';
+// Interface local para configuração do MCP (o pacote @playwright/mcp não exporta o tipo)
+interface PlaywrightMCPConfig {
+  browser: {
+    type: 'chromium' | 'firefox' | 'webkit';
+    headless: boolean;
+    viewport: { width: number; height: number };
+    timeout: number;
+  };
+  server: { port: number; host: string };
+  screenshot: { path: string; fullPage: boolean };
+  trace: { enabled: boolean; path: string };
+  video: { enabled: boolean; path: string };
+  navigation: { baseUrl: string; waitUntil: string };
+  actions: { defaultTimeout: number; retries: number };
+}
 
 const config: PlaywrightMCPConfig = {
   // Configurações do Browser

@@ -19,17 +19,25 @@ const generateUUID = (): string => {
 
 // Utility: Format date to ISO (yyyy-MM-dd) for HTML input
 const formatDateToISO = (dateStr: string): string => {
-  if (!dateStr) return '';
+  if (!dateStr || dateStr.trim() === '') return '';
   // Already in ISO format
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    // Validar se não é data epoch (1970-01-01)
+    if (dateStr === '1970-01-01') return '';
+    return dateStr;
+  }
   // Convert from dd/mm/yyyy to yyyy-MM-dd
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
     const [day, month, year] = dateStr.split('/');
+    // Validar se não é data epoch
+    if (year === '1970' && month === '01' && day === '01') return '';
     return `${year}-${month}-${day}`;
   }
-  // Try to parse other formats
+  // Rejeitar strings que não são datas válidas
+  if (!/\d/.test(dateStr)) return '';
+  // Try to parse other formats (com validação extra)
   const date = new Date(dateStr);
-  if (!isNaN(date.getTime())) {
+  if (!isNaN(date.getTime()) && date.getFullYear() > 1970) {
     return date.toISOString().split('T')[0];
   }
   return '';
@@ -37,9 +45,13 @@ const formatDateToISO = (dateStr: string): string => {
 
 // Utility: Format date from ISO to display (dd/mm/yyyy)
 const formatDateToDisplay = (dateStr: string): string => {
-  if (!dateStr) return '';
+  if (!dateStr || dateStr.trim() === '') return '';
+  // Rejeitar data epoch
+  if (dateStr === '1970-01-01' || dateStr === '01/01/1970') return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const [year, month, day] = dateStr.split('-');
+    // Não exibir data epoch
+    if (year === '1970' && month === '01' && day === '01') return '';
     return `${day}/${month}/${year}`;
   }
   return dateStr;
@@ -254,16 +266,21 @@ const App: React.FC = () => {
           id: generateUUID(),
           product: sanitizeInput(row['Produto (Frente)'] || row['product'] || ''),
           gherkin: row['Gherkin'] || row['gherkin'] || '',
-          environment: row['Ambiente'] || row['environment'] || '',
           flowKnowledge: row['Fluxo'] || row['flowKnowledge'] || '',
+          // Novos campos da planilha atualizada
+          evidenciamentoAxis: row['Evidenciamento Axis'] || row['evidenciamentoAxis'] || '',
+          insumosParaTestes: row['Insumos p/ Testes'] || row['Insumos para Testes'] || row['insumosParaTestes'] || '',
+          acionamento: row['Acionamento'] || row['acionamento'] || '',
+          // Campos legados (retrocompatibilidade)
+          environment: row['Ambiente'] || row['environment'] || '',
           dataMass: row['Massa'] || row['dataMass'] || '',
           outOfScope: String(row['Fora Escopo']).toLowerCase() === 'true' || row['outOfScope'] === true,
           responsibleQA: sanitizeInput(row['Resp. QA'] || row['responsibleQA'] || ''),
+          contactDate: formatDateToISO(row['Data Acionamento'] || row['contactDate'] || ''),
           responsible: sanitizeInput(row['Stakeholder'] || row['responsible'] || ''),
           role: sanitizeInput(row['Função'] || row['role'] || ''),
           techLeadName: sanitizeInput(row['Tech Lead'] || row['techLeadName'] || ''),
           status: row['Status Agenda'] || row['status'] || 'Pendente',
-          contactDate: formatDateToISO(row['Acionamento'] || row['contactDate'] || ''),
           date: formatDateToISO(row['Data Agenda'] || row['date'] || ''),
           approvalRequestedEmail: row['Aprovação Solicitada por email'] || row['approvalRequestedEmail'] || '',
           approvedByClient: row['Aprovado Pelo Cliente'] || row['approvedByClient'] || '',
@@ -371,22 +388,35 @@ const App: React.FC = () => {
     spreadsheetData.forEach(row => {
       const name = row.product || 'TBD';
       if (!fronts[name]) {
+        // Novos campos: evidenciamentoAxis e insumosParaTestes
+        const evidenciamentoOk = row.evidenciamentoAxis === 'Ambiente Liberado' || row.evidenciamentoAxis === 'Evidencias QA - OK';
+        const insumosOk = row.insumosParaTestes === 'Responsável QA' || !row.insumosParaTestes?.includes('Impactado');
+        
         fronts[name] = {
           frontName: name,
           flowKnowledge: row.flowKnowledge === 'OK',
-          dataMassInfo: row.dataMass === 'OK',
           gherkinReady: row.gherkin === 'OK',
-          envAccess: row.environment === 'OK',
+          evidenciamentoAxisOk: evidenciamentoOk,
+          insumosParaTestesOk: insumosOk,
           approvalRequestedEmail: row.approvalRequestedEmail === 'SIM',
           approvedByClient: row.approvedByClient === 'SIM',
           completionPercentage: 0,
-          outOfScope: row.outOfScope
+          outOfScope: row.outOfScope,
+          // Campos legados para retrocompatibilidade
+          dataMassInfo: row.dataMass === 'OK' || insumosOk,
+          envAccess: row.environment === 'OK' || evidenciamentoOk
         };
       } else {
         if (row.flowKnowledge === 'OK') fronts[name].flowKnowledge = true;
-        if (row.dataMass === 'OK') fronts[name].dataMassInfo = true;
         if (row.gherkin === 'OK') fronts[name].gherkinReady = true;
-        if (row.environment === 'OK') fronts[name].envAccess = true;
+        // Novos campos
+        const evidenciamentoOk = row.evidenciamentoAxis === 'Ambiente Liberado' || row.evidenciamentoAxis === 'Evidencias QA - OK';
+        const insumosOk = row.insumosParaTestes === 'Responsável QA' || !row.insumosParaTestes?.includes('Impactado');
+        if (evidenciamentoOk) fronts[name].evidenciamentoAxisOk = true;
+        if (insumosOk) fronts[name].insumosParaTestesOk = true;
+        // Legados
+        if (row.dataMass === 'OK' || insumosOk) fronts[name].dataMassInfo = true;
+        if (row.environment === 'OK' || evidenciamentoOk) fronts[name].envAccess = true;
         if (row.approvalRequestedEmail === 'SIM') fronts[name].approvalRequestedEmail = true;
         if (row.approvedByClient === 'SIM') fronts[name].approvedByClient = true;
         if (row.outOfScope) fronts[name].outOfScope = true;
@@ -396,8 +426,9 @@ const App: React.FC = () => {
     return Object.values(fronts).map(f => {
       if (f.outOfScope) return { ...f, completionPercentage: 0 };
       const items = [
-        f.flowKnowledge, f.dataMassInfo, f.gherkinReady, 
-        f.envAccess, f.approvalRequestedEmail, f.approvedByClient
+        f.flowKnowledge, f.gherkinReady, 
+        f.evidenciamentoAxisOk, f.insumosParaTestesOk,
+        f.approvalRequestedEmail, f.approvedByClient
       ];
       const completed = items.filter(Boolean).length;
       return { ...f, completionPercentage: Math.round((completed / 6) * 100) };
@@ -405,7 +436,7 @@ const App: React.FC = () => {
   }, [spreadsheetData]);
 
   // DERIVED DATA: Executive Panel - Effectiveness
-  const effectivenessData = useMemo(() => {
+  const effectivenessData: EffectivenessMetric[] = useMemo(() => {
     const metrics: Record<string, EffectivenessMetric> = {};
     spreadsheetData.forEach(row => {
       const person = row.responsible || 'Sem Nome';
@@ -417,10 +448,11 @@ const App: React.FC = () => {
       if (s === 'pendente') metrics[person].pendingAgendas++;
       if (s === 'inefetiva' || s === 'bloqueada') metrics[person].ineffectiveAgendas++;
     });
-    return Object.values(metrics).filter(m => m.person !== 'N/A').map(m => ({
-      ...m,
-      status: m.ineffectiveAgendas > 1 ? 'Critical' : m.pendingAgendas > 2 ? 'Warning' : 'On Track'
-    }));
+    return Object.values(metrics).filter(m => m.person !== 'N/A').map(m => {
+      const status: 'Critical' | 'Warning' | 'On Track' = 
+        m.ineffectiveAgendas > 1 ? 'Critical' : m.pendingAgendas > 2 ? 'Warning' : 'On Track';
+      return { ...m, status };
+    });
   }, [spreadsheetData]);
 
   // DERIVED DATA: Executive Panel - Escalations
@@ -465,11 +497,63 @@ const App: React.FC = () => {
     goLiveDate: '01.JUL.2026'
   }), [frontsCompleteness, effectivenessData, escalations]);
 
+  // Função auxiliar: calcular dias bloqueados a partir da data de acionamento
+  const calculateDaysBlocked = (contactDate: string, status: string): number => {
+    if (!contactDate || status === 'Realizada') return 0;
+    const contact = new Date(contactDate);
+    const today = new Date();
+    const diffTime = today.getTime() - contact.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
+
   const updateRow = async (id: string, field: keyof SpreadsheetRow, value: any) => {
-    setSpreadsheetData(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    setSpreadsheetData(prev => prev.map(r => {
+      if (r.id !== id) return r;
+      
+      let updatedRow = { ...r, [field]: value };
+      
+      // LÓGICA ESPECIAL: Quando status muda para 'Inefetiva', move a data atual para o histórico
+      if (field === 'status' && value === 'Inefetiva' && r.date) {
+        const currentHistory = r.dateHistory || [];
+        // Só adiciona se a data ainda não estiver no histórico
+        if (!currentHistory.includes(r.date)) {
+          updatedRow.dateHistory = [...currentHistory, r.date];
+        }
+      }
+      
+      // LÓGICA: Quando status sai de 'Inefetiva', limpa o histórico se necessário
+      if (field === 'status' && r.status === 'Inefetiva' && value !== 'Inefetiva') {
+        // Mantém o histórico, apenas limpa se for 'Realizada'
+        if (value === 'Realizada') {
+          updatedRow.dateHistory = [];
+        }
+      }
+      
+      // LÓGICA: Calcular dias bloqueados automaticamente quando contactDate é alterado
+      if (field === 'contactDate') {
+        updatedRow.daysBlocked = calculateDaysBlocked(value, r.status);
+      }
+      
+      // LÓGICA: Recalcular dias bloqueados quando status muda
+      if (field === 'status' && r.contactDate) {
+        updatedRow.daysBlocked = calculateDaysBlocked(r.contactDate, value);
+      }
+      
+      return updatedRow;
+    }));
     
     if (isOnline) {
       try {
+        // Se mudou para Inefetiva, também atualizar o dateHistory no banco
+        if (field === 'status' && value === 'Inefetiva') {
+          const row = spreadsheetData.find(r => r.id === id);
+          if (row?.date) {
+            const newHistory = [...(row.dateHistory || []), row.date];
+            await dbUpdateRow(id, { [field]: value, dateHistory: newHistory });
+            return;
+          }
+        }
         await dbUpdateRow(id, { [field]: value });
       } catch (err) {
         console.error('Erro ao atualizar no Supabase:', err);
@@ -480,10 +564,13 @@ const App: React.FC = () => {
   const addRow = async () => {
     const newRow: SpreadsheetRow = {
       id: generateUUID(),
-      gherkin: '', environment: '', flowKnowledge: '', dataMass: '',
+      gherkin: '', flowKnowledge: '',
+      evidenciamentoAxis: '', insumosParaTestes: '', acionamento: '',
+      environment: '', dataMass: '', // legados
       outOfScope: false, responsibleQA: 'QA', product: '', 
       responsible: '', role: '', techLeadName: '',
       status: 'Pendente', contactDate: '', date: '', 
+      dateHistory: [],
       daysBlocked: 0, priority: 'Media', notes: '', escalationReason: '',
       escalationResponsible: '', escalationStatus: ' ', escalationObs: '',
       approvalRequestedEmail: '', approvedByClient: ''
@@ -653,16 +740,17 @@ const SpreadsheetView: React.FC<{
     const exportData = data.map(row => ({
       'Produto (Frente)': row.product,
       'Gherkin': row.gherkin,
-      'Ambiente': row.environment,
+      'Evidenciamento Axis': row.evidenciamentoAxis || '',
       'Fluxo': row.flowKnowledge,
-      'Massa': row.dataMass,
+      'Insumos p/ Testes': row.insumosParaTestes || '',
       'Fora Escopo': row.outOfScope ? 'true' : 'false',
       'Resp. QA': row.responsibleQA,
+      'Data Acionamento': row.contactDate,
       'Stakeholder': row.responsible,
       'Função': row.role,
       'Tech Lead': row.techLeadName,
       'Status Agenda': row.status,
-      'Acionamento': row.contactDate,
+      'Acionamento': row.acionamento || '',
       'Data Agenda': row.date,
       'Aprovação Solicitada por email': row.approvalRequestedEmail,
       'Aprovado Pelo Cliente': row.approvedByClient,
@@ -743,21 +831,22 @@ const SpreadsheetView: React.FC<{
       </div>
       
       <div className="overflow-auto flex-grow bg-white" data-testid="spreadsheet-container">
-        <table className="w-full text-left text-[11px] border-collapse table-auto min-w-[3600px]" data-testid="spreadsheet-table">
+        <table className="w-full text-left text-[11px] border-collapse table-auto min-w-[4200px]" data-testid="spreadsheet-table">
           <thead className="sticky top-0 bg-slate-100 shadow-sm z-10 font-black uppercase tracking-widest text-slate-500">
             <tr>
               <th className="p-4 border-b border-r border-slate-200">Produto (Frente)</th>
               <th className="p-4 border-b border-r border-slate-200">Gherkin</th>
-              <th className="p-4 border-b border-r border-slate-200">Ambiente</th>
+              <th className="p-4 border-b border-r border-slate-200 bg-purple-50 text-purple-700">Evidenciamento Axis</th>
               <th className="p-4 border-b border-r border-slate-200">Fluxo</th>
-              <th className="p-4 border-b border-r border-slate-200">Massa</th>
+              <th className="p-4 border-b border-r border-slate-200 bg-purple-50 text-purple-700">Insumos p/ Testes</th>
               <th className="p-4 border-b border-r border-slate-200 text-center">Fora Escopo</th>
               <th className="p-4 border-b border-r border-slate-200">Resp. QA</th>
+              <th className="p-4 border-b border-r border-slate-200">Data Acionamento</th>
               <th className="p-4 border-b border-r border-slate-200">Stakeholder</th>
               <th className="p-4 border-b border-r border-slate-200">Função</th>
               <th className="p-4 border-b border-r border-slate-200">Tech Lead</th>
               <th className="p-4 border-b border-r border-slate-200">Status Agenda</th>
-              <th className="p-4 border-b border-r border-slate-200">Acionamento</th>
+              <th className="p-4 border-b border-r border-slate-200 bg-green-50 text-green-700">Acionamento</th>
               <th className="p-4 border-b border-r border-slate-200">Data Agenda</th>
               
               <th className="p-4 border-b border-r border-slate-200 bg-blue-50 text-blue-700">Aprovação Solicitada por email</th>
@@ -784,20 +873,29 @@ const SpreadsheetView: React.FC<{
                   <td className="p-2 border-r border-slate-100" data-field="gherkin">
                     <EditableSelect value={row.gherkin || ''} onChange={(v) => onEdit(row.id, 'gherkin', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100" data-field="environment">
-                    <EditableSelect value={row.environment || ''} onChange={(v) => onEdit(row.id, 'environment', v)} />
+                  <td className="p-2 border-r border-slate-100 bg-purple-50/30" data-field="evidenciamentoAxis">
+                    <EditableSelectEvidenciamento value={row.evidenciamentoAxis || ''} onChange={(v) => onEdit(row.id, 'evidenciamentoAxis', v)} />
                   </td>
                   <td className="p-2 border-r border-slate-100" data-field="flowKnowledge">
                     <EditableSelect value={row.flowKnowledge || ''} onChange={(v) => onEdit(row.id, 'flowKnowledge', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100" data-field="dataMass">
-                    <EditableSelect value={row.dataMass || ''} onChange={(v) => onEdit(row.id, 'dataMass', v)} />
+                  <td className="p-2 border-r border-slate-100 bg-purple-50/30" data-field="insumosParaTestes">
+                    <EditableSelectAcionamento value={row.insumosParaTestes || ''} onChange={(v) => onEdit(row.id, 'insumosParaTestes', v)} />
                   </td>
                   <td className="p-2 border-r border-slate-100 text-center" data-field="outOfScope">
                     <input type="checkbox" checked={row.outOfScope} onChange={(e) => onEdit(row.id, 'outOfScope', e.target.checked)} className="w-4 h-4 rounded" data-testid="checkbox-out-of-scope" />
                   </td>
                   <td className="p-2 border-r border-slate-100" data-field="responsibleQA">
                     <EditableInput value={row.responsibleQA} onChange={(v) => onEdit(row.id, 'responsibleQA', v)} />
+                  </td>
+                  <td className="p-2 border-r border-slate-100" data-field="contactDate">
+                    <input 
+                      type="date" 
+                      value={formatDateToISO(row.contactDate || '')} 
+                      onChange={(e) => onEdit(row.id, 'contactDate', e.target.value)} 
+                      data-testid="input-contact-date"
+                      className="w-full bg-transparent border-0 text-center font-medium text-slate-600 text-[11px]"
+                    />
                   </td>
                   <td className="p-2 border-r border-slate-100" data-field="responsible">
                     <EditableInput value={row.responsible} onChange={(v) => onEdit(row.id, 'responsible', v)} />
@@ -825,22 +923,15 @@ const SpreadsheetView: React.FC<{
                       <option value="Bloqueada">Bloqueada</option>
                     </select>
                   </td>
-                  <td className="p-2 border-r border-slate-100" data-field="contactDate">
-                    <input 
-                      type="date" 
-                      value={formatDateToISO(row.contactDate || '')} 
-                      onChange={(e) => onEdit(row.id, 'contactDate', e.target.value)} 
-                      data-testid="input-contact-date"
-                      className="w-full bg-transparent border-0 text-center font-medium text-slate-600 text-[11px]"
-                    />
+                  <td className="p-2 border-r border-slate-100 bg-green-50/30" data-field="acionamento">
+                    <EditableSelectAcionamento value={row.acionamento || ''} onChange={(v) => onEdit(row.id, 'acionamento', v)} />
                   </td>
                   <td className="p-2 border-r border-slate-100" data-field="date">
-                    <input 
-                      type="date" 
-                      value={formatDateToISO(row.date || '')} 
-                      onChange={(e) => onEdit(row.id, 'date', e.target.value)} 
-                      data-testid="input-agenda-date"
-                      className="w-full bg-transparent border-0 text-center font-black text-slate-800 text-[11px]"
+                    <DateCellWithHistory 
+                      currentDate={row.date || ''}
+                      dateHistory={row.dateHistory || []}
+                      status={row.status}
+                      onChange={(v) => onEdit(row.id, 'date', v)}
                     />
                   </td>
 
@@ -858,10 +949,16 @@ const SpreadsheetView: React.FC<{
                   </td>
 
                   <td className="p-2 border-r border-slate-100">
-                    <input type="number" value={row.daysBlocked || 0} onChange={(e) => onEdit(row.id, 'daysBlocked', parseInt(e.target.value) || 0)} className="w-full bg-transparent border-0 text-center font-black text-red-600" />
+                    <input 
+                      type="number" 
+                      value={row.daysBlocked || 0} 
+                      readOnly
+                      title="Calculado automaticamente a partir da Data de Acionamento"
+                      className="w-full bg-transparent border-0 text-center font-black text-red-600 cursor-not-allowed" 
+                    />
                   </td>
                   <td className="p-2 border-r border-slate-100">
-                    <EditableInput value={row.escalationReason || ''} onChange={(v) => onEdit(row.id, 'escalationReason', v)} />
+                    <EditableSelectMotivoBloqueio value={row.escalationReason || ''} onChange={(v) => onEdit(row.id, 'escalationReason', v)} />
                   </td>
                   <td className="p-2 border-r border-slate-100">
                     <select value={row.priority || ''} onChange={(e) => onEdit(row.id, 'priority', e.target.value)} className="w-full bg-transparent border-0 font-black uppercase text-[10px]">
@@ -947,19 +1044,174 @@ const EditableSelect: React.FC<{ value: string; onChange: (v: string) => void }>
   </select>
 );
 
-const EditableBoolSelect: React.FC<{ value: string; onChange: (v: 'SIM' | 'Não' | '') => void }> = ({ value, onChange }) => (
+// Novo: Select para Evidenciamento Axis (conforme aba Base coluna G)
+const EditableSelectEvidenciamento: React.FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
+  const getStyle = () => {
+    switch (value) {
+      case 'Ambiente Liberado': return 'bg-green-100 text-green-700';
+      case 'Evidencias QA - OK': return 'bg-green-100 text-green-700';
+      case 'Evidencias Disponibilizadas': return 'bg-blue-100 text-blue-700';
+      case 'Bloqueado - bug no Amb': return 'bg-red-100 text-red-700';
+      case 'Impactado - Sem Insumos': return 'bg-amber-100 text-amber-700';
+      default: return 'bg-slate-100 text-slate-400';
+    }
+  };
+  
+  return (
+    <select 
+      value={value} 
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full p-1 rounded font-black text-[9px] border-0 ${getStyle()}`}
+    >
+      <option value="">-</option>
+      <option value="Ambiente Liberado">Ambiente Liberado</option>
+      <option value="Bloqueado - bug no Amb">Bloqueado - bug no Amb</option>
+      <option value="Evidencias Disponibilizadas">Evidencias Disponibilizadas</option>
+      <option value="Evidencias QA - OK">Evidencias QA - OK</option>
+      <option value="Impactado - Sem Insumos">Impactado - Sem Insumos</option>
+    </select>
+  );
+};
+
+// Novo: Select para Acionamento e Insumos para Testes (conforme aba Base coluna I)
+const EditableSelectAcionamento: React.FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
+  const getStyle = () => {
+    switch (value) {
+      case 'Responsável QA': return 'bg-green-100 text-green-700';
+      case 'Responsável Lider Tecnico': return 'bg-blue-100 text-blue-700';
+      case 'GP - Necessário Envolver Áreas': return 'bg-purple-100 text-purple-700';
+      case 'Impactado - Sem Insumos': return 'bg-amber-100 text-amber-700';
+      case 'Área Envolvida - Comprometida': return 'bg-red-100 text-red-700';
+      default: return 'bg-slate-100 text-slate-400';
+    }
+  };
+  
+  return (
+    <select 
+      value={value} 
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full p-1 rounded font-black text-[9px] border-0 ${getStyle()}`}
+    >
+      <option value="">-</option>
+      <option value="Responsável QA">Responsável QA</option>
+      <option value="Responsável Lider Tecnico">Responsável Lider Tecnico</option>
+      <option value="GP - Necessário Envolver Áreas">GP - Necessário Envolver Áreas</option>
+      <option value="Impactado - Sem Insumos">Impactado - Sem Insumos</option>
+      <option value="Área Envolvida - Comprometida">Área Envolvida - Comprometida</option>
+    </select>
+  );
+};
+
+const EditableBoolSelect: React.FC<{ value: string; onChange: (v: 'SIM' | 'NÃO' | '') => void }> = ({ value, onChange }) => (
   <select 
     value={value} 
     onChange={(e) => onChange(e.target.value as any)}
     className={`w-full p-1 rounded font-black text-[10px] border-0 ${
-      value === 'SIM' ? 'bg-green-100 text-green-700' : value === 'Não' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400'
+      value === 'SIM' ? 'bg-green-100 text-green-700' : value === 'NÃO' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400'
     }`}
   >
     <option value="">-</option>
     <option value="SIM">SIM</option>
-    <option value="Não">Não</option>
+    <option value="NÃO">NÃO</option>
   </select>
 );
+
+// Novo: Select para Motivo do Bloqueio (conforme aba Base coluna K)
+const EditableSelectMotivoBloqueio: React.FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
+  const getStyle = () => {
+    switch (value) {
+      case 'Agenda Indisponível': return 'bg-amber-100 text-amber-700';
+      case 'Sem retorno': return 'bg-red-100 text-red-700';
+      case 'Não Compareceu nas agendas': return 'bg-red-100 text-red-700';
+      case 'Agenda Inefetiva': return 'bg-orange-100 text-orange-700';
+      default: return 'bg-slate-100 text-slate-400';
+    }
+  };
+  
+  return (
+    <select 
+      value={value} 
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full p-1 rounded font-black text-[9px] border-0 ${getStyle()}`}
+    >
+      <option value="">-</option>
+      <option value="Agenda Indisponível">Agenda Indisponível</option>
+      <option value="Sem retorno">Sem retorno</option>
+      <option value="Não Compareceu nas agendas">Não Compareceu nas agendas</option>
+      <option value="Agenda Inefetiva">Agenda Inefetiva</option>
+    </select>
+  );
+};
+
+// Novo: Célula de Data com histórico de datas inefetivas (riscadas)
+const DateCellWithHistory: React.FC<{ 
+  currentDate: string; 
+  dateHistory: string[]; 
+  status: string;
+  onChange: (v: string) => void 
+}> = ({ currentDate, dateHistory, status, onChange }) => {
+  
+  // Verificar se a data é válida (não é epoch, não é placeholder)
+  const isValidDate = (dateStr: string): boolean => {
+    if (!dateStr) return false;
+    if (dateStr === '1970-01-01' || dateStr === '01/01/1970') return false;
+    if (dateStr.includes('dd') || dateStr.includes('mm') || dateStr.includes('aaaa')) return false;
+    return true;
+  };
+
+  // Formatar data para exibição (dd/mm/yyyy)
+  const formatDate = (dateStr: string): string => {
+    if (!isValidDate(dateStr)) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    return dateStr;
+  };
+
+  // Formatar data para input (yyyy-mm-dd)
+  const formatForInput = (dateStr: string): string => {
+    if (!isValidDate(dateStr)) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      const [day, month, year] = dateStr.split('/');
+      return `${year}-${month}-${day}`;
+    }
+    return '';
+  };
+  
+  // Filtrar histórico de datas para remover datas inválidas
+  const validDateHistory = dateHistory?.filter(isValidDate) || [];
+
+  return (
+    <div className="flex flex-col gap-1">
+      {/* Datas anteriores (inefetivas) - aparecem riscadas */}
+      {validDateHistory.length > 0 && (
+        <div className="flex flex-col gap-0.5">
+          {validDateHistory.map((histDate, idx) => (
+            <span 
+              key={idx} 
+              className="text-[10px] text-slate-400 line-through text-center"
+              title="Agenda inefetiva"
+            >
+              {formatDate(histDate)}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Data atual */}
+      <input 
+        type="date" 
+        value={formatForInput(currentDate)} 
+        onChange={(e) => onChange(e.target.value)} 
+        data-testid="input-agenda-date"
+        className={`w-full bg-transparent border-0 text-center font-black text-[11px] ${
+          status === 'Inefetiva' ? 'text-amber-600' : 'text-slate-800'
+        }`}
+      />
+    </div>
+  );
+};
 
 const ExecutivePanelView: React.FC<{ 
   fronts: FrontCompleteness[], 
@@ -1040,9 +1292,9 @@ const ExecutivePanelView: React.FC<{
                       </div>
                       <div className="flex flex-wrap gap-2 pt-2">
                         <MiniPill active={f.flowKnowledge} label="Fluxo" />
-                        <MiniPill active={f.dataMassInfo} label="Massa" />
                         <MiniPill active={f.gherkinReady} label="Gherkin" />
-                        <MiniPill active={f.envAccess} label="Ambiente" />
+                        <MiniPill active={f.evidenciamentoAxisOk} label="Evidenc. Axis" />
+                        <MiniPill active={f.insumosParaTestesOk} label="Insumos" />
                         <MiniPill active={f.approvalRequestedEmail} label="Email Solic." />
                         <MiniPill active={f.approvedByClient} label="Aprov. Cli." />
                       </div>
@@ -1168,10 +1420,16 @@ const LogbookView: React.FC<{ data: SpreadsheetRow[] }> = ({ data }) => {
     return grouped;
   }, [data]);
 
-  // Últimas atividades (ordenadas por data)
+  // Últimas atividades (ordenadas por data) - filtrar datas epoch
+  const isValidDate = (dateStr: string | undefined): boolean => {
+    if (!dateStr || dateStr.trim() === '') return false;
+    if (dateStr.includes('1970')) return false;
+    return /\d{4}-\d{2}-\d{2}/.test(dateStr) || /\d{2}\/\d{2}\/\d{4}/.test(dateStr);
+  };
+
   const recentActivities = useMemo(() => {
     return [...data]
-      .filter(row => row.date || row.contactDate)
+      .filter(row => isValidDate(row.date) || isValidDate(row.contactDate))
       .sort((a, b) => {
         const dateA = a.date || a.contactDate || '';
         const dateB = b.date || b.contactDate || '';
@@ -1233,7 +1491,7 @@ const LogbookView: React.FC<{ data: SpreadsheetRow[] }> = ({ data }) => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-[10px] font-black uppercase text-slate-400">
-                      {row.date || row.contactDate || 'Sem data'} • {row.responsibleQA}
+                      {formatDateToDisplay(row.date) || formatDateToDisplay(row.contactDate) || 'Sem data'} • {row.responsibleQA}
                     </p>
                     <h5 className="text-sm font-bold text-slate-800 mt-1">{row.product || 'Sem produto'}</h5>
                     <p className="text-xs text-slate-500 mt-1">Stakeholder: {row.responsible || 'N/A'}</p>
