@@ -785,16 +785,64 @@ export const updateRowWithBusinessLogic = async (
   if (error) throw error;
 };
 
-// Helper para calcular dias bloqueados
-const calculateDaysBlocked = (contactDate: string, status: string): number => {
-  if (!contactDate || status === 'Realizada') return 0;
+// ============================================================================
+// FUNÇÃO: Calcular dias bloqueados ÚTEIS (v2.0.0 - Padrão SDET)
+// Ignora finais de semana E feriados nacionais brasileiros
+// Usa Data Agenda como referência (prioridade), senão blockedSinceDate
+// ============================================================================
+
+// Feriados Nacionais Brasileiros 2025-2026
+const FERIADOS_BRASIL = new Set([
+  // 2025
+  '2025-01-01', '2025-03-03', '2025-03-04', '2025-04-18', '2025-04-21',
+  '2025-05-01', '2025-06-19', '2025-09-07', '2025-10-12', '2025-11-02',
+  '2025-11-15', '2025-12-25',
+  // 2026
+  '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', '2026-04-03',
+  '2026-04-21', '2026-05-01', '2026-06-04', '2026-09-07', '2026-10-12',
+  '2026-11-02', '2026-11-15', '2026-12-25'
+]);
+
+const isFeriado = (date: Date): boolean => {
+  const dateStr = date.toISOString().split('T')[0];
+  return FERIADOS_BRASIL.has(dateStr);
+};
+
+export const calculateBlockedBusinessDays = (
+  blockedSinceDate: string | undefined | null,
+  status: string,
+  dataAgenda?: string | null  // Prioridade: Data Agenda
+): number => {
+  if (status !== 'Bloqueada') return 0;
   
-  const contact = new Date(contactDate);
-  const today = new Date();
-  const diffTime = today.getTime() - contact.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return Math.max(0, diffDays);
+  // Prioriza Data Agenda, senão usa blockedSinceDate
+  const referenceDate = dataAgenda || blockedSinceDate;
+  if (!referenceDate || referenceDate.startsWith('1970')) return 0;
+
+  try {
+    const startDate = new Date(referenceDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(startDate.getTime()) || startDate > today) return 0;
+
+    // Conta apenas dias úteis (seg-sex, excluindo feriados)
+    let businessDays = 0;
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= today) {
+      const dayOfWeek = currentDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isHoliday = isFeriado(currentDate);
+      
+      if (!isWeekend && !isHoliday) businessDays++;
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return Math.max(0, businessDays - 1); // Não conta o dia de início
+  } catch {
+    return 0;
+  }
 };
 ```
 

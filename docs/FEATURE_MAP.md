@@ -93,6 +93,11 @@
 2. **Fora de Escopo**: Linha recebe opacidade 60% e é excluída de cálculos
 3. **Import Excel**: Confirmação obrigatória, substitui todos os dados existentes
 4. **Scan IA**: Dados extraídos são ADICIONADOS aos existentes (não substitui)
+5. **Dias Bloqueados (v2.0.0)**: Calculado automaticamente baseado em **dias úteis** desde a Data Agenda:
+   - Ignora sábados e domingos
+   - Ignora feriados nacionais brasileiros (2025-2026)
+   - Feriados inclusos: Confraternização, Carnaval, Sexta-Santa, Tiradentes, Dia do Trabalho, Corpus Christi, Independência, N.Sra. Aparecida, Finados, Proclamação da República, Natal
+   - Recálculo automático a cada 60 segundos
 
 ### 2.4 Cenários de Teste
 

@@ -76,6 +76,122 @@ const sanitizeInput = (input: string): string => {
   return sanitized.trim();
 };
 
+// ============================================================================
+// FERIADOS NACIONAIS BRASILEIROS 2026
+// Calendário oficial seguido pelo Brasil
+// ============================================================================
+const FERIADOS_BRASIL_2026: string[] = [
+  '2026-01-01', // Confraternização Universal (Quinta)
+  '2026-02-16', // Carnaval (Segunda)
+  '2026-02-17', // Carnaval (Terça)
+  '2026-02-18', // Quarta-feira de Cinzas (ponto facultativo)
+  '2026-04-03', // Sexta-feira Santa
+  '2026-04-21', // Tiradentes (Terça)
+  '2026-05-01', // Dia do Trabalho (Sexta)
+  '2026-06-04', // Corpus Christi (Quinta - ponto facultativo)
+  '2026-09-07', // Independência do Brasil (Segunda)
+  '2026-10-12', // Nossa Senhora Aparecida (Segunda)
+  '2026-11-02', // Finados (Segunda)
+  '2026-11-15', // Proclamação da República (Domingo)
+  '2026-12-25', // Natal (Sexta)
+];
+
+// Feriados para outros anos (pode ser expandido)
+const FERIADOS_BRASIL_2025: string[] = [
+  '2025-01-01', // Confraternização Universal
+  '2025-03-03', // Carnaval (Segunda)
+  '2025-03-04', // Carnaval (Terça)
+  '2025-04-18', // Sexta-feira Santa
+  '2025-04-21', // Tiradentes
+  '2025-05-01', // Dia do Trabalho
+  '2025-06-19', // Corpus Christi
+  '2025-09-07', // Independência do Brasil
+  '2025-10-12', // Nossa Senhora Aparecida
+  '2025-11-02', // Finados
+  '2025-11-15', // Proclamação da República
+  '2025-12-25', // Natal
+];
+
+// Conjunto de todos os feriados para verificação rápida
+const FERIADOS_BRASIL = new Set([...FERIADOS_BRASIL_2025, ...FERIADOS_BRASIL_2026]);
+
+// Função auxiliar para verificar se é feriado
+const isFeriado = (date: Date): boolean => {
+  const dateStr = date.toISOString().split('T')[0];
+  return FERIADOS_BRASIL.has(dateStr);
+};
+
+// ============================================================================
+// FUNÇÃO PURA: Calcular dias bloqueados úteis (Padrão SDET)
+// Ignora finais de semana E feriados nacionais brasileiros
+// Usa a Data Agenda (date) como referência quando disponível,
+// caso contrário usa blockedSinceDate
+// Exportada para uso em testes unitários
+// ============================================================================
+export const calculateBlockedBusinessDays = (
+  blockedSinceDate: string | undefined | null, 
+  status: string,
+  dataAgenda?: string | null  // Nova: data da agenda como referência
+): number => {
+  // Validação de status: só calcula se status for "Bloqueada"
+  if (status !== 'Bloqueada') {
+    return 0;
+  }
+
+  // Determinar a data de referência: prioridade para Data Agenda, depois blockedSinceDate
+  let referenceDate = dataAgenda || blockedSinceDate;
+  
+  // Validação de entrada: campo nulo, undefined, vazio
+  if (!referenceDate || typeof referenceDate !== 'string' || referenceDate.trim() === '') {
+    return 0;
+  }
+
+  // Prevenção de Epoch 1970: rejeitar datas inválidas
+  if (referenceDate === '1970-01-01' || referenceDate.startsWith('1970')) {
+    console.warn('[SDET] Data Epoch 1970 detectada - ignorando cálculo:', referenceDate);
+    return 0;
+  }
+
+  try {
+    const startDate = new Date(referenceDate + 'T00:00:00'); // Força parse como local
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normaliza para meia-noite
+
+    // Validação: data válida e não no futuro
+    if (isNaN(startDate.getTime())) {
+      console.warn('[SDET] Data inválida detectada:', referenceDate);
+      return 0;
+    }
+
+    // Se a data de referência é futura, retorna 0
+    if (startDate > today) {
+      return 0;
+    }
+
+    // Cálculo de dias úteis (ignorando sábados, domingos E feriados)
+    let businessDays = 0;
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= today) {
+      const dayOfWeek = currentDate.getDay();
+      // 0 = Domingo, 6 = Sábado
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isHoliday = isFeriado(currentDate);
+      
+      if (!isWeekend && !isHoliday) {
+        businessDays++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Ajuste: não conta o dia de início (começamos a contar no dia seguinte)
+    return Math.max(0, businessDays - 1);
+  } catch (error) {
+    console.error('[SDET] Erro ao calcular dias bloqueados:', error);
+    return 0;
+  }
+};
+
 import * as htmlToImage from 'html-to-image';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI } from "@google/genai";
@@ -214,6 +330,10 @@ const App: React.FC = () => {
   // Only save when we have data or explicitly empty (not on initial load)
   const [hasInitialized, setHasInitialized] = useState(false);
   
+  // Ref para acessar spreadsheetData atual sem causar re-render do useEffect
+  const spreadsheetDataRef = useRef<SpreadsheetRow[]>([]);
+  spreadsheetDataRef.current = spreadsheetData;
+  
   useEffect(() => {
     if (!isLoading && hasInitialized) {
       localStorage.setItem('ebv_qa_data', JSON.stringify(spreadsheetData));
@@ -222,6 +342,83 @@ const App: React.FC = () => {
       setHasInitialized(true);
     }
   }, [spreadsheetData, isLoading, hasInitialized]);
+
+  // ============================================================================
+  // RECÁLCULO AUTOMÁTICO DE DIAS BLOQUEADOS (Padrão SDET)
+  // Executa ao carregar e a cada 60 segundos para agendas bloqueadas existentes
+  // ============================================================================
+  useEffect(() => {
+    if (isLoading) return;
+
+    // Função de recálculo para todas as agendas bloqueadas
+    const recalculateBlockedDays = async () => {
+      const currentData = spreadsheetDataRef.current;
+      if (currentData.length === 0) return;
+
+      let hasChanges = false;
+      const updatedData = currentData.map(row => {
+        // Só recalcula para linhas com status "Bloqueada"
+        if (row.status !== 'Bloqueada') return row;
+        
+        // Precisa ter pelo menos Data Agenda OU blockedSinceDate
+        const hasValidDate = (row.date && row.date.trim() !== '' && !row.date.startsWith('1970')) ||
+                            (row.blockedSinceDate && row.blockedSinceDate.trim() !== '' && !row.blockedSinceDate.startsWith('1970'));
+        
+        if (!hasValidDate) {
+          console.warn('[SDET] Nenhuma data válida para calcular dias bloqueados:', row.id);
+          return row;
+        }
+
+        // Usa Data Agenda como referência (prioridade), senão usa blockedSinceDate
+        const calculatedDays = calculateBlockedBusinessDays(row.blockedSinceDate, row.status, row.date);
+        
+        // Só atualiza se o valor mudou
+        if (calculatedDays !== row.daysBlocked) {
+          hasChanges = true;
+          console.log(`[SDET] Recalculado dias bloqueados para ${row.product}: ${row.daysBlocked} -> ${calculatedDays} (dataAgenda: ${row.date}, blockedSince: ${row.blockedSinceDate})`);
+          return { ...row, daysBlocked: calculatedDays };
+        }
+        
+        return row;
+      });
+
+      // Se houve mudanças, atualiza o estado e persiste no banco
+      if (hasChanges) {
+        setSpreadsheetData(updatedData);
+        
+        // Persistir as atualizações no banco para as linhas que mudaram
+        if (isOnline) {
+          const changedRows = updatedData.filter((row, index) => 
+            row.daysBlocked !== currentData[index]?.daysBlocked && 
+            row.status === 'Bloqueada'
+          );
+          
+          for (const row of changedRows) {
+            try {
+              await dbUpdateRow(row.id, { daysBlocked: row.daysBlocked });
+            } catch (err) {
+              console.error('[SDET] Erro ao persistir daysBlocked:', err);
+            }
+          }
+        }
+      }
+    };
+
+    // Executar imediatamente ao carregar (com debounce de 500ms)
+    const initialTimeout = setTimeout(() => {
+      recalculateBlockedDays();
+    }, 500);
+
+    // Executar periodicamente a cada 60 segundos
+    const intervalId = setInterval(() => {
+      recalculateBlockedDays();
+    }, 60000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(intervalId);
+    };
+  }, [isLoading, isOnline]);
 
   const handleUpdateAndSave = async () => {
     if (spreadsheetData.length === 0) {
@@ -503,16 +700,11 @@ const App: React.FC = () => {
     goLiveDate: '01.JUL.2026'
   }), [frontsCompleteness, effectivenessData, escalations]);
 
-  // Função auxiliar: calcular dias bloqueados a partir da data em que foi bloqueado
-  const calculateDaysBlocked = (blockedSinceDate: string | undefined, status: string): number => {
-    // Só calcula se o status for "Bloqueada" e tiver data de bloqueio
-    if (!blockedSinceDate || status !== 'Bloqueada') return 0;
-    const blockedDate = new Date(blockedSinceDate);
-    const today = new Date();
-    const diffTime = today.getTime() - blockedDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  };
+  // Wrapper para usar a função pura no componente
+  // Prioriza Data Agenda (date) sobre blockedSinceDate para o cálculo
+  const calculateDaysBlocked = useCallback((blockedSinceDate: string | undefined | null, status: string, dataAgenda?: string | null): number => {
+    return calculateBlockedBusinessDays(blockedSinceDate, status, dataAgenda);
+  }, []);
 
   const updateRow = async (id: string, field: keyof SpreadsheetRow, value: any) => {
     setSpreadsheetData(prev => prev.map(r => {
@@ -534,18 +726,26 @@ const App: React.FC = () => {
       if (field === 'status' && value === 'Bloqueada' && r.status !== 'Bloqueada') {
         const today = new Date().toISOString().split('T')[0]; // formato yyyy-mm-dd
         updatedRow.blockedSinceDate = today;
-        updatedRow.daysBlocked = 0; // Começa em 0, vai incrementando
+        // Calcula usando Data Agenda como referência (se existir), senão usa hoje
+        updatedRow.daysBlocked = calculateDaysBlocked(today, 'Bloqueada', r.date);
+        
+        // Log de auditoria (não adicionar ao dateHistory para não poluir o campo de datas)
+        console.log(`[SDET AUDITORIA] ${new Date().toLocaleString('pt-BR')} - Status alterado para BLOQUEADA. blockedSinceDate: ${today}, dataAgenda: ${r.date}, daysBlocked: ${updatedRow.daysBlocked}`);
       }
       
       // LÓGICA: Quando status sai de 'Bloqueada', limpa blockedSinceDate e daysBlocked
       if (field === 'status' && r.status === 'Bloqueada' && value !== 'Bloqueada') {
+        // Log de auditoria
+        console.log(`[SDET AUDITORIA] ${new Date().toLocaleString('pt-BR')} - Status alterado de BLOQUEADA para ${value}. Dias bloqueados: ${r.daysBlocked}`);
+        
         updatedRow.blockedSinceDate = undefined;
         updatedRow.daysBlocked = 0;
       }
       
-      // LÓGICA: Recalcular dias bloqueados quando status muda
-      if (field === 'status') {
-        updatedRow.daysBlocked = calculateDaysBlocked(updatedRow.blockedSinceDate, value);
+      // LÓGICA: Recalcular dias bloqueados quando status muda (para Bloqueada existente)
+      if (field === 'status' && value === 'Bloqueada' && r.status === 'Bloqueada') {
+        // Mantém a data original e recalcula os dias usando Data Agenda
+        updatedRow.daysBlocked = calculateDaysBlocked(r.blockedSinceDate, value, r.date);
       }
       
       return updatedRow;
@@ -564,25 +764,51 @@ const App: React.FC = () => {
           }
         }
         
-        // Para mudanças de status, tratar casos especiais
+        // Para mudanças de status, tratar casos especiais (SDET Pattern)
         if (field === 'status') {
+          // Debounce/Throttle: pequeno delay para garantir estado atualizado
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
           const updates: Partial<SpreadsheetRow> = { status: value };
           
-          // Preservar dateHistory se existir
-          if (row?.dateHistory && row.dateHistory.length > 0) {
-            updates.dateHistory = row.dateHistory;
-          }
-          
-          // Se mudou PARA Bloqueada, registrar data de início
+          // Se mudou PARA Bloqueada, registrar data de início e calcular dias
           if (value === 'Bloqueada' && row?.status !== 'Bloqueada') {
-            updates.blockedSinceDate = new Date().toISOString().split('T')[0];
-            updates.daysBlocked = 0;
+            const today = new Date().toISOString().split('T')[0];
+            updates.blockedSinceDate = today;
+            // Usar Data Agenda como referência para cálculo
+            updates.daysBlocked = calculateDaysBlocked(today, 'Bloqueada', row?.date);
+            
+            // Preservar dateHistory existente (sem adicionar auditoria)
+            if (row?.dateHistory && row.dateHistory.length > 0) {
+              // Filtrar entradas de auditoria antigas do dateHistory
+              updates.dateHistory = row.dateHistory.filter((d: string) => !d.startsWith('['));
+            }
+            
+            console.log('[SDET] Status -> Bloqueada:', { blockedSinceDate: today, dataAgenda: row?.date, daysBlocked: updates.daysBlocked });
           }
-          
+          // Se já está Bloqueada, recalcular dias usando Data Agenda
+          else if (value === 'Bloqueada' && row?.status === 'Bloqueada') {
+            updates.daysBlocked = calculateDaysBlocked(row.blockedSinceDate, 'Bloqueada', row?.date);
+            // Preservar dateHistory existente (sem auditoria)
+            if (row?.dateHistory && row.dateHistory.length > 0) {
+              updates.dateHistory = row.dateHistory.filter((d: string) => !d.startsWith('['));
+            }
+          }
           // Se saiu DE Bloqueada, limpar
-          if (row?.status === 'Bloqueada' && value !== 'Bloqueada') {
+          else if (row?.status === 'Bloqueada' && value !== 'Bloqueada') {
             updates.blockedSinceDate = undefined;
             updates.daysBlocked = 0;
+            
+            // Preservar dateHistory existente (sem auditoria)
+            if (row?.dateHistory && row.dateHistory.length > 0) {
+              updates.dateHistory = row.dateHistory.filter((d: string) => !d.startsWith('['));
+            }
+            
+            console.log('[SDET] Status Bloqueada -> ' + value + ': campos resetados');
+          }
+          // Para outros status, preservar dateHistory se existir (sem auditoria)
+          else if (row?.dateHistory && row.dateHistory.length > 0) {
+            updates.dateHistory = row.dateHistory.filter((d: string) => !d.startsWith('['));
           }
           
           await dbUpdateRow(id, updates);
@@ -1216,15 +1442,19 @@ const DateCellWithHistory: React.FC<{
     return '';
   };
   
-  // Filtrar histórico de datas para remover datas inválidas
-  const validDateHistory = dateHistory?.filter(isValidDate) || [];
+  // Filtrar histórico de datas para remover datas inválidas E entradas de auditoria
+  const validDateHistory = dateHistory?.filter(d => {
+    // Remover entradas de auditoria [BLOQUEADA], [DESBLOQUEADA], etc.
+    if (d.startsWith('[')) return false;
+    return isValidDate(d);
+  }) || [];
 
   return (
     <div className="flex flex-col gap-1">
       {/* Datas anteriores (inefetivas) - aparecem riscadas */}
-      {dateHistory && dateHistory.length > 0 && (
+      {validDateHistory && validDateHistory.length > 0 && (
         <div className="flex flex-col gap-0.5">
-          {dateHistory.map((histDate, idx) => (
+          {validDateHistory.map((histDate, idx) => (
             <span 
               key={idx} 
               className="text-[10px] text-slate-400 line-through text-center"

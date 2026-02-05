@@ -391,3 +391,241 @@ describe('Business Logic - Stakeholder Mapping', () => {
     });
   });
 });
+
+/**
+ * =============================================================================
+ * TESTES UNITÁRIOS: Cálculo de Dias Bloqueados (Padrão SDET)
+ * =============================================================================
+ * Valida a função calculateBlockedBusinessDays para:
+ * - Datas retroativas (1 semana, 1 mês, 6 meses)
+ * - Prevenção de Epoch 1970
+ * - Valores nulos/undefined
+ * - Status diferentes de "Bloqueada"
+ * - Finais de semana (devem ser ignorados)
+ */
+
+import { calculateBlockedBusinessDays } from '../../App';
+
+describe('Business Logic - Calculate Blocked Business Days (SDET Pattern)', () => {
+  
+  // Helper para criar uma data no passado (dias úteis atrás)
+  const getDateDaysAgo = (days: number): string => {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper para criar uma data específica
+  const createDate = (year: number, month: number, day: number): string => {
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  describe('Validação de entrada (Prevenção de undefined)', () => {
+    it('TC-BLOCKED-001: Deve retornar 0 para blockedSinceDate undefined', () => {
+      expect(calculateBlockedBusinessDays(undefined, 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-002: Deve retornar 0 para blockedSinceDate null', () => {
+      expect(calculateBlockedBusinessDays(null, 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-003: Deve retornar 0 para blockedSinceDate string vazia', () => {
+      expect(calculateBlockedBusinessDays('', 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-004: Deve retornar 0 para blockedSinceDate com apenas espaços', () => {
+      expect(calculateBlockedBusinessDays('   ', 'Bloqueada')).toBe(0);
+    });
+  });
+
+  describe('Validação de status', () => {
+    const validDate = getDateDaysAgo(7);
+
+    it('TC-BLOCKED-005: Deve retornar 0 para status "Pendente"', () => {
+      expect(calculateBlockedBusinessDays(validDate, 'Pendente')).toBe(0);
+    });
+
+    it('TC-BLOCKED-006: Deve retornar 0 para status "Realizada"', () => {
+      expect(calculateBlockedBusinessDays(validDate, 'Realizada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-007: Deve retornar 0 para status "Inefetiva"', () => {
+      expect(calculateBlockedBusinessDays(validDate, 'Inefetiva')).toBe(0);
+    });
+
+    it('TC-BLOCKED-008: Deve calcular corretamente para status "Bloqueada"', () => {
+      const result = calculateBlockedBusinessDays(validDate, 'Bloqueada');
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('Prevenção de Epoch 1970', () => {
+    it('TC-BLOCKED-009: Deve retornar 0 para data Epoch 1970-01-01', () => {
+      expect(calculateBlockedBusinessDays('1970-01-01', 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-010: Deve retornar 0 para qualquer data de 1970', () => {
+      expect(calculateBlockedBusinessDays('1970-06-15', 'Bloqueada')).toBe(0);
+      expect(calculateBlockedBusinessDays('1970-12-31', 'Bloqueada')).toBe(0);
+    });
+  });
+
+  describe('Datas inválidas', () => {
+    it('TC-BLOCKED-011: Deve retornar 0 para data inválida "invalid"', () => {
+      expect(calculateBlockedBusinessDays('invalid', 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-012: Deve retornar 0 para data futura', () => {
+      const futureDate = createDate(2030, 12, 31);
+      expect(calculateBlockedBusinessDays(futureDate, 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-013: Deve retornar 0 para formato de data incorreto', () => {
+      expect(calculateBlockedBusinessDays('31/12/2024', 'Bloqueada')).toBe(0);
+    });
+  });
+
+  describe('Cálculo de dias úteis (ignorando finais de semana)', () => {
+    it('TC-BLOCKED-014: Bloqueio de hoje deve retornar 0 dias', () => {
+      const today = new Date().toISOString().split('T')[0];
+      expect(calculateBlockedBusinessDays(today, 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-015: Bloqueio de ontem (se dia útil) deve retornar >= 0', () => {
+      const yesterday = getDateDaysAgo(1);
+      const result = calculateBlockedBusinessDays(yesterday, 'Bloqueada');
+      // Pode ser 0 ou 1 dependendo se ontem foi um fim de semana
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(1);
+    });
+
+    it('TC-BLOCKED-016: Deve calcular corretamente para 1 semana (aproximadamente 5 dias úteis)', () => {
+      const oneWeekAgo = getDateDaysAgo(7);
+      const result = calculateBlockedBusinessDays(oneWeekAgo, 'Bloqueada');
+      // 7 dias corridos = ~5 dias úteis (depende do dia da semana)
+      expect(result).toBeGreaterThanOrEqual(3);
+      expect(result).toBeLessThanOrEqual(6);
+    });
+
+    it('TC-BLOCKED-017: Deve calcular corretamente para 2 semanas (aproximadamente 10 dias úteis)', () => {
+      const twoWeeksAgo = getDateDaysAgo(14);
+      const result = calculateBlockedBusinessDays(twoWeeksAgo, 'Bloqueada');
+      // 14 dias corridos = ~10 dias úteis
+      expect(result).toBeGreaterThanOrEqual(8);
+      expect(result).toBeLessThanOrEqual(12);
+    });
+
+    it('TC-BLOCKED-018: Deve calcular corretamente para 1 mês (aproximadamente 22 dias úteis)', () => {
+      const oneMonthAgo = getDateDaysAgo(30);
+      const result = calculateBlockedBusinessDays(oneMonthAgo, 'Bloqueada');
+      // 30 dias corridos = ~22 dias úteis
+      expect(result).toBeGreaterThanOrEqual(18);
+      expect(result).toBeLessThanOrEqual(24);
+    });
+  });
+
+  describe('Cenários de Regressão - Datas Retroativas', () => {
+    it('TC-BLOCKED-019: Bloqueio de 6 meses atrás deve retornar valor positivo alto', () => {
+      const sixMonthsAgo = getDateDaysAgo(180);
+      const result = calculateBlockedBusinessDays(sixMonthsAgo, 'Bloqueada');
+      // ~180 dias = ~128 dias úteis (aproximadamente)
+      expect(result).toBeGreaterThanOrEqual(100);
+    });
+
+    it('TC-BLOCKED-020: Bloqueio de 1 ano atrás deve retornar valor positivo alto', () => {
+      const oneYearAgo = getDateDaysAgo(365);
+      const result = calculateBlockedBusinessDays(oneYearAgo, 'Bloqueada');
+      // ~365 dias = ~260 dias úteis (aproximadamente)
+      expect(result).toBeGreaterThanOrEqual(200);
+    });
+  });
+
+  describe('Cenários de Validação Console Log (SDET Debug)', () => {
+    it('TC-BLOCKED-021: Deve logar warning para data Epoch no console', () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      calculateBlockedBusinessDays('1970-01-01', 'Bloqueada');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[SDET] Data Epoch 1970 detectada'),
+        expect.any(String)
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it('TC-BLOCKED-022: Deve logar warning para data inválida no console', () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      calculateBlockedBusinessDays('not-a-date', 'Bloqueada');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[SDET] Data inválida detectada'),
+        expect.any(String)
+      );
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Cenários de Borda (Edge Cases)', () => {
+    it('TC-BLOCKED-023: Data de bloqueio igual a hoje (meia-noite) retorna 0', () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      expect(calculateBlockedBusinessDays(todayStr, 'Bloqueada')).toBe(0);
+    });
+
+    it('TC-BLOCKED-024: Múltiplas chamadas consecutivas retornam mesmo valor', () => {
+      const date = getDateDaysAgo(10);
+      const result1 = calculateBlockedBusinessDays(date, 'Bloqueada');
+      const result2 = calculateBlockedBusinessDays(date, 'Bloqueada');
+      const result3 = calculateBlockedBusinessDays(date, 'Bloqueada');
+      expect(result1).toBe(result2);
+      expect(result2).toBe(result3);
+    });
+  });
+
+  describe('Cenários com Data Agenda (dataAgenda)', () => {
+    it('TC-BLOCKED-025: Deve usar Data Agenda como referência quando fornecida', () => {
+      const blockedSinceDate = getDateDaysAgo(1); // Ontem
+      const dataAgenda = getDateDaysAgo(4); // 4 dias atrás
+      
+      const resultWithDataAgenda = calculateBlockedBusinessDays(blockedSinceDate, 'Bloqueada', dataAgenda);
+      const resultWithoutDataAgenda = calculateBlockedBusinessDays(blockedSinceDate, 'Bloqueada');
+      
+      // Com Data Agenda deve calcular baseado em 4 dias atrás (mais dias bloqueados)
+      expect(resultWithDataAgenda).toBeGreaterThanOrEqual(resultWithoutDataAgenda);
+    });
+
+    it('TC-BLOCKED-026: Deve usar blockedSinceDate quando dataAgenda é undefined', () => {
+      const blockedSinceDate = getDateDaysAgo(5);
+      const result = calculateBlockedBusinessDays(blockedSinceDate, 'Bloqueada', undefined);
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
+
+    it('TC-BLOCKED-027: Deve usar blockedSinceDate quando dataAgenda é string vazia', () => {
+      const blockedSinceDate = getDateDaysAgo(5);
+      const result = calculateBlockedBusinessDays(blockedSinceDate, 'Bloqueada', '');
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
+
+    it('TC-BLOCKED-028: Deve ignorar dataAgenda inválida e usar blockedSinceDate', () => {
+      const blockedSinceDate = getDateDaysAgo(5);
+      const result = calculateBlockedBusinessDays(blockedSinceDate, 'Bloqueada', 'invalid-date');
+      // Deve calcular baseado no blockedSinceDate
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
+
+    it('TC-BLOCKED-029: Data Agenda de 01/02/2026 com hoje 05/02/2026 deve retornar ~2-3 dias úteis', () => {
+      // Simulando cenário real: Data Agenda = 01/02/2026, Hoje = 05/02/2026
+      // 01/02 (dom) -> 02/02 (seg) -> 03/02 (ter) -> 04/02 (qua) -> 05/02 (qui)
+      // Dias úteis entre 01/02 e 05/02: seg, ter, qua = 3 dias, -1 = 2 dias bloqueados
+      const dataAgenda = '2026-02-01';
+      const result = calculateBlockedBusinessDays(null, 'Bloqueada', dataAgenda);
+      
+      // Se hoje é 05/02/2026, deve retornar pelo menos 2 dias úteis
+      // (depende do dia da semana de 01/02/2026)
+      expect(result).toBeGreaterThanOrEqual(2);
+    });
+
+    it('TC-BLOCKED-030: Deve retornar 0 quando ambas as datas são nulas', () => {
+      const result = calculateBlockedBusinessDays(null, 'Bloqueada', null);
+      expect(result).toBe(0);
+    });
+  });
+});

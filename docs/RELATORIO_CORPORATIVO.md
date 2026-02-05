@@ -249,7 +249,10 @@ A aplicação segue uma arquitetura **Component-Based** com separação de respo
 │  │   └── approvedByClient: 'SIM' | 'Não' | ''                  │
 │  │                                                              │
 │  └── [ESCALATION]                                               │
-│      ├── daysBlocked: number                                    │
+│      ├── daysBlocked: number (auto-calculado v2.0.0)           │
+│      │   └── Dias ÚTEIS desde Data Agenda                      │
+│      │   └── Ignora: sáb/dom + feriados BR 2025-2026           │
+│      ├── blockedSinceDate: string (data do bloqueio)           │
 │      ├── priority: string                                       │
 │      ├── escalationReason: string                               │
 │      ├── escalationResponsible: string                          │

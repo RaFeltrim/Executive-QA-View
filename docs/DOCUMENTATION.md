@@ -332,7 +332,7 @@ interface SpreadsheetViewProps {
 | Data Agenda | date | date | ✅ |
 | Aprovação Solicitada | approvalRequestedEmail | select (SIM/Não) | ✅ |
 | Aprovado pelo Cliente | approvedByClient | select (SIM/Não) | ✅ |
-| Dias Bloq. | daysBlocked | number | ✅ |
+| Dias Bloq. | daysBlocked | number | 🔄 Automático |
 | Motivo Bloqueio | escalationReason | text | ✅ |
 | Prioridade | priority | select | ✅ |
 | Resp. Escalation | escalationResponsible | text | ⚠️ Condicional |
@@ -341,6 +341,14 @@ interface SpreadsheetViewProps {
 | Observações | notes | text | ✅ |
 
 > ⚠️ Campos de escalation só são editáveis quando `daysBlocked > 0` ou `status === 'Bloqueada'`
+
+> 🔄 **Dias Bloq. - Cálculo Automático (v2.0.0)**:
+> - Calculado automaticamente quando status muda para "Bloqueada"
+> - Usa **Data Agenda** como referência (prioridade), senão usa `blockedSinceDate`
+> - **Ignora finais de semana** (sábados e domingos)
+> - **Ignora feriados nacionais brasileiros** (2025-2026)
+> - Recalculado automaticamente a cada 60 segundos
+> - Função: `calculateBlockedBusinessDays(blockedSinceDate, status, dataAgenda)`
 
 ### 3.4 ExecutivePanelView
 
