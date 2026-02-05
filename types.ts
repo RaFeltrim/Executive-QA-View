@@ -6,6 +6,31 @@ export enum TaskStatus {
   BLOCKED = 'Bloqueado'
 }
 
+// Enum para status do pipeline de testes (novo)
+export type TestPipelineStatus = 
+  | 'Não Iniciado' 
+  | 'Aguardando Gherkin' 
+  | 'Gherkin Validado' 
+  | 'Em Execução' 
+  | 'Concluído' 
+  | 'Falhou';
+
+// Interface para resultado de validação Gherkin (novo - jsonb)
+export interface GherkinValidationResult {
+  errors: string[];
+  isValid: boolean;
+  warnings: string[];
+  validatedAt: string | null;
+}
+
+// Interface para log de confirmação do pipeline (novo - jsonb)
+export interface PipelineConfirmationLog {
+  timestamp: string;
+  action: string;
+  user?: string;
+  details?: string;
+}
+
 export interface QATask {
   id: string;
   owner: 'Rafa' | 'David' | 'Mauricio';
@@ -56,6 +81,16 @@ export interface SpreadsheetRow {
   escalationStatus?: string; // Status do Escalation
   escalationObs?: string; // OBS do Escalation
   notes: string; // Observacoes Gerais
+  
+  // ============================================
+  // NOVOS CAMPOS DO PIPELINE DE TESTES (v2.0.0)
+  // Sincronizados com schema Supabase
+  // ============================================
+  testPipelineStatus?: TestPipelineStatus; // Status do pipeline de testes
+  gherkinValidationResult?: GherkinValidationResult; // Resultado da validação Gherkin (jsonb)
+  lastTestExecution?: string; // Data/hora da última execução de teste
+  evidenceUrl?: string; // URL das evidências de teste
+  pipelineConfirmationLog?: PipelineConfirmationLog[]; // Log de confirmações do pipeline (jsonb array)
 }
 
 export interface EffectivenessMetric {

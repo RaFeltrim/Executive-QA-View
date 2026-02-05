@@ -1,5 +1,15 @@
 import { supabase, QA_TABLE } from './supabaseClient';
-import { SpreadsheetRow } from './types';
+import { SpreadsheetRow, GherkinValidationResult, PipelineConfirmationLog } from './types';
+
+// Default values para campos JSONB
+const DEFAULT_GHERKIN_VALIDATION: GherkinValidationResult = {
+  errors: [],
+  isValid: false,
+  warnings: [],
+  validatedAt: null
+};
+
+const DEFAULT_PIPELINE_LOG: PipelineConfirmationLog[] = [];
 
 // Converter de snake_case (DB) para camelCase (App)
 const mapFromDB = (row: any): SpreadsheetRow => ({
@@ -33,7 +43,15 @@ const mapFromDB = (row: any): SpreadsheetRow => ({
   escalationResponsible: row.escalation_responsible || '',
   escalationStatus: row.escalation_status || '',
   escalationObs: row.escalation_obs || '',
-  notes: row.notes || ''
+  notes: row.notes || '',
+  // ============================================
+  // NOVOS CAMPOS DO PIPELINE DE TESTES (v2.0.0)
+  // ============================================
+  testPipelineStatus: row.test_pipeline_status || 'Não Iniciado',
+  gherkinValidationResult: row.gherkin_validation_result || DEFAULT_GHERKIN_VALIDATION,
+  lastTestExecution: row.last_test_execution || '',
+  evidenceUrl: row.evidence_url || '',
+  pipelineConfirmationLog: row.pipeline_confirmation_log || DEFAULT_PIPELINE_LOG
 });
 
 // Converter de camelCase (App) para snake_case (DB)
@@ -68,7 +86,15 @@ const mapToDB = (row: SpreadsheetRow): any => ({
   escalation_responsible: row.escalationResponsible,
   escalation_status: row.escalationStatus,
   escalation_obs: row.escalationObs,
-  notes: row.notes
+  notes: row.notes,
+  // ============================================
+  // NOVOS CAMPOS DO PIPELINE DE TESTES (v2.0.0)
+  // ============================================
+  test_pipeline_status: row.testPipelineStatus || 'Não Iniciado',
+  gherkin_validation_result: row.gherkinValidationResult || DEFAULT_GHERKIN_VALIDATION,
+  last_test_execution: row.lastTestExecution || null,
+  evidence_url: row.evidenceUrl || null,
+  pipeline_confirmation_log: row.pipelineConfirmationLog || DEFAULT_PIPELINE_LOG
 });
 
 // Buscar todos os dados
@@ -138,6 +164,12 @@ export const updateRow = async (id: string, updates: Partial<SpreadsheetRow>): P
   if (updates.escalationStatus !== undefined) dbUpdates.escalation_status = updates.escalationStatus;
   if (updates.escalationObs !== undefined) dbUpdates.escalation_obs = updates.escalationObs;
   if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+  // Pipeline de Testes Automatizados
+  if (updates.testPipelineStatus !== undefined) dbUpdates.test_pipeline_status = updates.testPipelineStatus;
+  if (updates.gherkinValidationResult !== undefined) dbUpdates.gherkin_validation_result = updates.gherkinValidationResult;
+  if (updates.lastTestExecution !== undefined) dbUpdates.last_test_execution = updates.lastTestExecution;
+  if (updates.evidenceUrl !== undefined) dbUpdates.evidence_url = updates.evidenceUrl;
+  if (updates.pipelineConfirmationLog !== undefined) dbUpdates.pipeline_confirmation_log = updates.pipelineConfirmationLog;
 
   const { error } = await supabase
     .from(QA_TABLE)
