@@ -99,7 +99,7 @@ export interface EffectivenessMetric {
   pendingAgendas: number;
   ineffectiveAgendas: number;
   incompleteAgendas: number;
-  status: 'Critical' | 'Warning' | 'On Track';
+  status: string; // 'Critical' | 'Warning' | 'On Track'
 }
 
 export interface FrontCompleteness {

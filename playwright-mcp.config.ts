@@ -22,8 +22,11 @@ interface PlaywrightMCPConfig {
   screenshot: { path: string; fullPage: boolean };
   trace: { enabled: boolean; path: string };
   video: { enabled: boolean; path: string };
-  navigation: { baseUrl: string; waitUntil: string };
-  actions: { defaultTimeout: number; retries: number };
+  navigation?: { baseUrl: string; waitUntil: string };
+  actions?: { defaultTimeout: number; retries: number };
+  allowedUrls?: string[];
+  blockedActions?: string[];
+  timeouts?: { navigation: number; action: number; assertion: number };
 }
 
 const config: PlaywrightMCPConfig = {
