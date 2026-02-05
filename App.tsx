@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { 
   BookOpen, CheckCircle2, Clock, Download, ShieldCheck, 
   Users2, Target, AlertTriangle, Layers, UserCircle2, 
@@ -43,6 +44,26 @@ const formatDateToDisplay = (dateStr: string): string => {
   }
   return dateStr;
 };
+
+// Security: Sanitize input to prevent XSS and SQL injection attacks
+const sanitizeInput = (input: string): string => {
+  if (!input || typeof input !== 'string') return input;
+  // Use DOMPurify to strip HTML/script tags (XSS protection)
+  let sanitized = DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+  // Additional protection: escape SQL injection patterns
+  sanitized = sanitized
+    .replace(/'/g, "''") // Escape single quotes
+    .replace(/--/g, '') // Remove SQL comment syntax
+    .replace(/;/g, '') // Remove semicolons
+    .replace(/DROP\s+TABLE/gi, '') // Remove DROP TABLE
+    .replace(/DELETE\s+FROM/gi, '') // Remove DELETE FROM
+    .replace(/INSERT\s+INTO/gi, '') // Remove INSERT INTO
+    .replace(/UPDATE\s+.*SET/gi, '') // Remove UPDATE SET
+    .replace(/UNION\s+SELECT/gi, '') // Remove UNION SELECT
+    .replace(/SELECT\s+.*FROM/gi, ''); // Remove SELECT FROM
+  return sanitized.trim();
+};
+
 import * as htmlToImage from 'html-to-image';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI } from "@google/genai";
@@ -228,19 +249,19 @@ const App: React.FC = () => {
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel columns to SpreadsheetRow properties
+        // Map Excel columns to SpreadsheetRow properties (with XSS/SQL sanitization)
         const mappedData: SpreadsheetRow[] = json.map((row, idx) => ({
           id: generateUUID(),
-          product: row['Produto (Frente)'] || row['product'] || '',
+          product: sanitizeInput(row['Produto (Frente)'] || row['product'] || ''),
           gherkin: row['Gherkin'] || row['gherkin'] || '',
           environment: row['Ambiente'] || row['environment'] || '',
           flowKnowledge: row['Fluxo'] || row['flowKnowledge'] || '',
           dataMass: row['Massa'] || row['dataMass'] || '',
           outOfScope: String(row['Fora Escopo']).toLowerCase() === 'true' || row['outOfScope'] === true,
-          responsibleQA: row['Resp. QA'] || row['responsibleQA'] || '',
-          responsible: row['Stakeholder'] || row['responsible'] || '',
-          role: row['Função'] || row['role'] || '',
-          techLeadName: row['Tech Lead'] || row['techLeadName'] || '',
+          responsibleQA: sanitizeInput(row['Resp. QA'] || row['responsibleQA'] || ''),
+          responsible: sanitizeInput(row['Stakeholder'] || row['responsible'] || ''),
+          role: sanitizeInput(row['Função'] || row['role'] || ''),
+          techLeadName: sanitizeInput(row['Tech Lead'] || row['techLeadName'] || ''),
           status: row['Status Agenda'] || row['status'] || 'Pendente',
           contactDate: formatDateToISO(row['Acionamento'] || row['contactDate'] || ''),
           date: formatDateToISO(row['Data Agenda'] || row['date'] || ''),
@@ -248,11 +269,11 @@ const App: React.FC = () => {
           approvedByClient: row['Aprovado Pelo Cliente'] || row['approvedByClient'] || '',
           daysBlocked: Number(row['Dias Bloq.'] || row['daysBlocked'] || 0),
           priority: row['Prioridade'] || row['priority'] || 'Media',
-          escalationReason: row['Motivo Bloqueio (Escalada)'] || row['escalationReason'] || '',
-          escalationResponsible: row['Responsável Escalation'] || row['escalationResponsible'] || '',
+          escalationReason: sanitizeInput(row['Motivo Bloqueio (Escalada)'] || row['escalationReason'] || ''),
+          escalationResponsible: sanitizeInput(row['Responsável Escalation'] || row['escalationResponsible'] || ''),
           escalationStatus: row['Status Escalation'] || row['escalationStatus'] || ' ',
-          escalationObs: row['OBS Escalation'] || row['escalationObs'] || '',
-          notes: row['Observacoes'] || row['notes'] || ''
+          escalationObs: sanitizeInput(row['OBS Escalation'] || row['escalationObs'] || ''),
+          notes: sanitizeInput(row['Observacoes'] || row['notes'] || '')
         }));
 
         if (mappedData.length > 0) {
@@ -906,7 +927,7 @@ const EditableInput: React.FC<{
   <input 
     type="text" 
     value={value} 
-    onChange={(e) => onChange(e.target.value)}
+    onChange={(e) => onChange(sanitizeInput(e.target.value))}
     disabled={disabled}
     className={`w-full bg-transparent border-0 focus:bg-white focus:ring-1 focus:ring-blue-300 p-1 rounded ${bold ? 'font-black text-slate-800' : 'font-medium text-slate-600'} ${center ? 'text-center' : ''} ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
   />
