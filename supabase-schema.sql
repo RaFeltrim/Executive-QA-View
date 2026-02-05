@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS qa_spreadsheet_data (
   out_of_scope BOOLEAN DEFAULT FALSE,
   
   -- Novos campos da planilha atualizada (2026-02-05)
-  evidenciamento_axis TEXT, -- Ambiente Liberado, Bloqueado - bug no Amb, Evidencias Disponibilizadas, Evidencias QA - OK, Impactado - Sem Insumos
+  evidenciamento_as_is TEXT, -- Ambiente Liberado, Bloqueado - bug no Amb, Evidencias Disponibilizadas, Evidencias QA - OK, Impactado - Sem Insumos
   insumos_para_testes TEXT, -- Responsável QA, Responsável Lider Tecnico, GP - Necessário Envolver Áreas, etc.
   acionamento TEXT, -- Responsável QA, GP - Necessário Envolver Áreas, Impactado - Sem Insumos, Área Envolvida - Comprometida
   
   -- Campos legados (mantidos para retrocompatibilidade)
   data_mass TEXT, -- @deprecated - usar insumos_para_testes
-  environment TEXT, -- @deprecated - usar evidenciamento_axis
+  environment TEXT, -- @deprecated - usar evidenciamento_as_is
   
   -- Stakeholder Details
   responsible TEXT,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS qa_spreadsheet_data (
 -- MIGRATION SCRIPT: Adicionar novas colunas
 -- Execute este bloco se a tabela já existir
 -- =============================================
--- ALTER TABLE qa_spreadsheet_data ADD COLUMN IF NOT EXISTS evidenciamento_axis TEXT;
+-- ALTER TABLE qa_spreadsheet_data ADD COLUMN IF NOT EXISTS evidenciamento_as_is TEXT;
 -- ALTER TABLE qa_spreadsheet_data ADD COLUMN IF NOT EXISTS insumos_para_testes TEXT;
 -- ALTER TABLE qa_spreadsheet_data ADD COLUMN IF NOT EXISTS acionamento TEXT;
 -- ALTER TABLE qa_spreadsheet_data ADD COLUMN IF NOT EXISTS date_history TEXT DEFAULT '[]';

@@ -14,7 +14,7 @@ const mapFromDB = (row: any): SpreadsheetRow => ({
   gherkin: row.gherkin || '',
   outOfScope: row.out_of_scope || false,
   // Novos campos
-  evidenciamentoAxis: row.evidenciamento_axis || '',
+  evidenciamentoAsIs: row.evidenciamento_as_is || '',
   insumosParaTestes: row.insumos_para_testes || '',
   acionamento: row.acionamento || '',
   // Campos legados (retrocompatibilidade)
@@ -48,7 +48,7 @@ const mapToDB = (row: SpreadsheetRow): any => ({
   gherkin: row.gherkin,
   out_of_scope: row.outOfScope,
   // Novos campos
-  evidenciamento_axis: row.evidenciamentoAxis,
+  evidenciamento_as_is: row.evidenciamentoAsIs,
   insumos_para_testes: row.insumosParaTestes,
   acionamento: row.acionamento,
   // Campos legados (retrocompatibilidade)
@@ -115,7 +115,7 @@ export const updateRow = async (id: string, updates: Partial<SpreadsheetRow>): P
   if (updates.gherkin !== undefined) dbUpdates.gherkin = updates.gherkin;
   if (updates.outOfScope !== undefined) dbUpdates.out_of_scope = updates.outOfScope;
   // Novos campos
-  if (updates.evidenciamentoAxis !== undefined) dbUpdates.evidenciamento_axis = updates.evidenciamentoAxis;
+  if (updates.evidenciamentoAsIs !== undefined) dbUpdates.evidenciamento_as_is = updates.evidenciamentoAsIs;
   if (updates.insumosParaTestes !== undefined) dbUpdates.insumos_para_testes = updates.insumosParaTestes;
   if (updates.acionamento !== undefined) dbUpdates.acionamento = updates.acionamento;
   // Campos legados (retrocompatibilidade)

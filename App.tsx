@@ -268,7 +268,7 @@ const App: React.FC = () => {
           gherkin: row['Gherkin'] || row['gherkin'] || '',
           flowKnowledge: row['Fluxo'] || row['flowKnowledge'] || '',
           // Novos campos da planilha atualizada
-          evidenciamentoAxis: row['Evidenciamento Axis'] || row['evidenciamentoAxis'] || '',
+          evidenciamentoAsIs: row['Evidenciamento As Is'] || row['evidenciamentoAsIs'] || '',
           insumosParaTestes: row['Insumos p/ Testes'] || row['Insumos para Testes'] || row['insumosParaTestes'] || '',
           acionamento: row['Acionamento'] || row['acionamento'] || '',
           // Campos legados (retrocompatibilidade)
@@ -388,15 +388,15 @@ const App: React.FC = () => {
     spreadsheetData.forEach(row => {
       const name = row.product || 'TBD';
       if (!fronts[name]) {
-        // Novos campos: evidenciamentoAxis e insumosParaTestes
-        const evidenciamentoOk = row.evidenciamentoAxis === 'Ambiente Liberado' || row.evidenciamentoAxis === 'Evidencias QA - OK';
+        // Novos campos: evidenciamentoAsIs e insumosParaTestes
+        const evidenciamentoOk = row.evidenciamentoAsIs === 'Ambiente Liberado' || row.evidenciamentoAsIs === 'Evidencias QA - OK';
         const insumosOk = row.insumosParaTestes === 'Responsável QA' || !row.insumosParaTestes?.includes('Impactado');
         
         fronts[name] = {
           frontName: name,
           flowKnowledge: row.flowKnowledge === 'OK',
           gherkinReady: row.gherkin === 'OK',
-          evidenciamentoAxisOk: evidenciamentoOk,
+          evidenciamentoAsIsOk: evidenciamentoOk,
           insumosParaTestesOk: insumosOk,
           approvalRequestedEmail: row.approvalRequestedEmail === 'SIM',
           approvedByClient: row.approvedByClient === 'SIM',
@@ -410,9 +410,9 @@ const App: React.FC = () => {
         if (row.flowKnowledge === 'OK') fronts[name].flowKnowledge = true;
         if (row.gherkin === 'OK') fronts[name].gherkinReady = true;
         // Novos campos
-        const evidenciamentoOk = row.evidenciamentoAxis === 'Ambiente Liberado' || row.evidenciamentoAxis === 'Evidencias QA - OK';
+        const evidenciamentoOk = row.evidenciamentoAsIs === 'Ambiente Liberado' || row.evidenciamentoAsIs === 'Evidencias QA - OK';
         const insumosOk = row.insumosParaTestes === 'Responsável QA' || !row.insumosParaTestes?.includes('Impactado');
-        if (evidenciamentoOk) fronts[name].evidenciamentoAxisOk = true;
+        if (evidenciamentoOk) fronts[name].evidenciamentoAsIsOk = true;
         if (insumosOk) fronts[name].insumosParaTestesOk = true;
         // Legados
         if (row.dataMass === 'OK' || insumosOk) fronts[name].dataMassInfo = true;
@@ -427,7 +427,7 @@ const App: React.FC = () => {
       if (f.outOfScope) return { ...f, completionPercentage: 0 };
       const items = [
         f.flowKnowledge, f.gherkinReady, 
-        f.evidenciamentoAxisOk, f.insumosParaTestesOk,
+        f.evidenciamentoAsIsOk, f.insumosParaTestesOk,
         f.approvalRequestedEmail, f.approvedByClient
       ];
       const completed = items.filter(Boolean).length;
@@ -436,7 +436,7 @@ const App: React.FC = () => {
   }, [spreadsheetData]);
 
   // DERIVED DATA: Executive Panel - Effectiveness
-  const effectivenessData: EffectivenessMetric[] = useMemo(() => {
+  const effectivenessData = useMemo(() => {
     const metrics: Record<string, EffectivenessMetric> = {};
     spreadsheetData.forEach(row => {
       const person = row.responsible || 'Sem Nome';
@@ -448,11 +448,10 @@ const App: React.FC = () => {
       if (s === 'pendente') metrics[person].pendingAgendas++;
       if (s === 'inefetiva' || s === 'bloqueada') metrics[person].ineffectiveAgendas++;
     });
-    return Object.values(metrics).filter(m => m.person !== 'N/A').map(m => {
-      const status: 'Critical' | 'Warning' | 'On Track' = 
-        m.ineffectiveAgendas > 1 ? 'Critical' : m.pendingAgendas > 2 ? 'Warning' : 'On Track';
-      return { ...m, status };
-    });
+    return Object.values(metrics).filter(m => m.person !== 'N/A').map(m => ({
+      ...m,
+      status: m.ineffectiveAgendas > 1 ? 'Critical' : m.pendingAgendas > 2 ? 'Warning' : 'On Track'
+    }));
   }, [spreadsheetData]);
 
   // DERIVED DATA: Executive Panel - Escalations
@@ -565,7 +564,7 @@ const App: React.FC = () => {
     const newRow: SpreadsheetRow = {
       id: generateUUID(),
       gherkin: '', flowKnowledge: '',
-      evidenciamentoAxis: '', insumosParaTestes: '', acionamento: '',
+      evidenciamentoAsIs: '', insumosParaTestes: '', acionamento: '',
       environment: '', dataMass: '', // legados
       outOfScope: false, responsibleQA: 'QA', product: '', 
       responsible: '', role: '', techLeadName: '',
@@ -740,7 +739,7 @@ const SpreadsheetView: React.FC<{
     const exportData = data.map(row => ({
       'Produto (Frente)': row.product,
       'Gherkin': row.gherkin,
-      'Evidenciamento Axis': row.evidenciamentoAxis || '',
+      'Evidenciamento As Is': row.evidenciamentoAsIs || '',
       'Fluxo': row.flowKnowledge,
       'Insumos p/ Testes': row.insumosParaTestes || '',
       'Fora Escopo': row.outOfScope ? 'true' : 'false',
@@ -836,7 +835,7 @@ const SpreadsheetView: React.FC<{
             <tr>
               <th className="p-4 border-b border-r border-slate-200">Produto (Frente)</th>
               <th className="p-4 border-b border-r border-slate-200">Gherkin</th>
-              <th className="p-4 border-b border-r border-slate-200 bg-purple-50 text-purple-700">Evidenciamento Axis</th>
+              <th className="p-4 border-b border-r border-slate-200 bg-purple-50 text-purple-700">Evidenciamento As Is</th>
               <th className="p-4 border-b border-r border-slate-200">Fluxo</th>
               <th className="p-4 border-b border-r border-slate-200 bg-purple-50 text-purple-700">Insumos p/ Testes</th>
               <th className="p-4 border-b border-r border-slate-200 text-center">Fora Escopo</th>
@@ -873,8 +872,8 @@ const SpreadsheetView: React.FC<{
                   <td className="p-2 border-r border-slate-100" data-field="gherkin">
                     <EditableSelect value={row.gherkin || ''} onChange={(v) => onEdit(row.id, 'gherkin', v)} />
                   </td>
-                  <td className="p-2 border-r border-slate-100 bg-purple-50/30" data-field="evidenciamentoAxis">
-                    <EditableSelectEvidenciamento value={row.evidenciamentoAxis || ''} onChange={(v) => onEdit(row.id, 'evidenciamentoAxis', v)} />
+                  <td className="p-2 border-r border-slate-100 bg-purple-50/30" data-field="evidenciamentoAsIs">
+                    <EditableSelectEvidenciamento value={row.evidenciamentoAsIs || ''} onChange={(v) => onEdit(row.id, 'evidenciamentoAsIs', v)} />
                   </td>
                   <td className="p-2 border-r border-slate-100" data-field="flowKnowledge">
                     <EditableSelect value={row.flowKnowledge || ''} onChange={(v) => onEdit(row.id, 'flowKnowledge', v)} />
@@ -1186,9 +1185,9 @@ const DateCellWithHistory: React.FC<{
   return (
     <div className="flex flex-col gap-1">
       {/* Datas anteriores (inefetivas) - aparecem riscadas */}
-      {validDateHistory.length > 0 && (
+      {dateHistory && dateHistory.length > 0 && (
         <div className="flex flex-col gap-0.5">
-          {validDateHistory.map((histDate, idx) => (
+          {dateHistory.map((histDate, idx) => (
             <span 
               key={idx} 
               className="text-[10px] text-slate-400 line-through text-center"
@@ -1293,7 +1292,7 @@ const ExecutivePanelView: React.FC<{
                       <div className="flex flex-wrap gap-2 pt-2">
                         <MiniPill active={f.flowKnowledge} label="Fluxo" />
                         <MiniPill active={f.gherkinReady} label="Gherkin" />
-                        <MiniPill active={f.evidenciamentoAxisOk} label="Evidenc. Axis" />
+                        <MiniPill active={f.evidenciamentoAsIsOk} label="Evidenc. As Is" />
                         <MiniPill active={f.insumosParaTestesOk} label="Insumos" />
                         <MiniPill active={f.approvalRequestedEmail} label="Email Solic." />
                         <MiniPill active={f.approvedByClient} label="Aprov. Cli." />

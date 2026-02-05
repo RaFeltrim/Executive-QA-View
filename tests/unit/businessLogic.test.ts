@@ -18,7 +18,7 @@ describe('Business Logic - Fronts Completeness Calculation', () => {
           frontName: name,
           flowKnowledge: row.flowKnowledge === 'OK',
           gherkinReady: row.gherkin === 'OK',
-          evidenciamentoAxisOk: row.evidenciamentoAxis === 'Evidencias QA - OK' || row.environment === 'OK',
+          evidenciamentoAsIsOk: row.evidenciamentoAsIs === 'Evidencias QA - OK' || row.environment === 'OK',
           insumosParaTestesOk: row.insumosParaTestes === 'OK' || row.dataMass === 'OK',
           approvalRequestedEmail: row.approvalRequestedEmail === 'SIM',
           approvedByClient: row.approvedByClient === 'SIM',
@@ -33,7 +33,7 @@ describe('Business Logic - Fronts Completeness Calculation', () => {
         if (row.dataMass === 'OK') fronts[name].dataMassInfo = true;
         if (row.gherkin === 'OK') fronts[name].gherkinReady = true;
         if (row.environment === 'OK') fronts[name].envAccess = true;
-        if (row.evidenciamentoAxis === 'Evidencias QA - OK') fronts[name].evidenciamentoAxisOk = true;
+        if (row.evidenciamentoAsIs === 'Evidencias QA - OK') fronts[name].evidenciamentoAsIsOk = true;
         if (row.insumosParaTestes === 'OK') fronts[name].insumosParaTestesOk = true;
         if (row.approvalRequestedEmail === 'SIM') fronts[name].approvalRequestedEmail = true;
         if (row.approvedByClient === 'SIM') fronts[name].approvedByClient = true;

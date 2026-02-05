@@ -30,13 +30,13 @@ export interface SpreadsheetRow {
   outOfScope?: boolean; // Fora Escopo
   
   // Novos campos da planilha atualizada
-  evidenciamentoAxis?: string; // Evidenciamento Axis: Ambiente Liberado, Bloqueado - bug no Amb, Evidencias Disponibilizadas, Evidencias QA - OK, Impactado - Sem Insumos
+  evidenciamentoAsIs?: string; // Evidenciamento As Is: Ambiente Liberado, Bloqueado - bug no Amb, Evidencias Disponibilizadas, Evidencias QA - OK, Impactado - Sem Insumos
   insumosParaTestes?: string; // Insumos para Testes: Responsável QA, Responsável Lider Tecnico, etc.
   acionamento?: string; // Acionamento: Responsável QA, GP - Necessário Envolver Áreas, etc.
   
   // Campos legados (mantidos para retrocompatibilidade)
   dataMass?: 'OK' | 'NOK' | ''; // @deprecated - usar insumosParaTestes
-  environment?: 'OK' | 'NOK' | ''; // @deprecated - usar evidenciamentoAxis
+  environment?: 'OK' | 'NOK' | ''; // @deprecated - usar evidenciamentoAsIs
   
   // Stakeholder Details
   responsible: string; // Stakeholder Name
@@ -70,7 +70,7 @@ export interface FrontCompleteness {
   frontName: string;
   flowKnowledge: boolean;
   gherkinReady: boolean;
-  evidenciamentoAxisOk: boolean; // Novo: substitui envAccess
+  evidenciamentoAsIsOk: boolean; // Novo: substitui envAccess
   insumosParaTestesOk: boolean; // Novo: substitui dataMassInfo
   approvalRequestedEmail: boolean;
   approvedByClient: boolean;
