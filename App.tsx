@@ -497,6 +497,8 @@ const App: React.FC = () => {
   const SidebarItem: React.FC<{ id: string; icon: React.ReactNode; label: string }> = ({ id, icon, label }) => (
     <button
       onClick={() => setActiveTab(id as any)}
+      data-testid={`tab-${id}`}
+      aria-label={label}
       className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all ${
         activeTab === id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-200'
       }`}
@@ -507,16 +509,16 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900">
+    <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900" data-testid="app-container">
       {isLoading && (
-        <div className="fixed inset-0 bg-white/80 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-white/80 z-50 flex items-center justify-center" data-testid="loading-overlay">
           <div className="flex flex-col items-center gap-4">
             <Loader2 size={48} className="animate-spin text-blue-600" />
             <p className="text-slate-600 font-medium">Carregando dados...</p>
           </div>
         </div>
       )}
-      <aside className="w-64 bg-white border-r border-slate-200 p-6 flex flex-col gap-8 shrink-0">
+      <aside className="w-64 bg-white border-r border-slate-200 p-6 flex flex-col gap-8 shrink-0" data-testid="sidebar">
         <div>
           <h1 className="text-xl font-bold text-blue-800 tracking-tight leading-tight">Studio QA</h1>
           <div className="mt-1 space-y-0.5">
@@ -549,13 +551,13 @@ const App: React.FC = () => {
             {activeTab.replace('_', ' ')}
           </h2>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid="sync-indicator">
               {isOnline ? (
-                <Cloud size={16} className="text-green-500" />
+                <Cloud size={16} className="text-green-500" data-testid="online-indicator" />
               ) : (
-                <CloudOff size={16} className="text-slate-400" />
+                <CloudOff size={16} className="text-slate-400" data-testid="offline-indicator" />
               )}
-              <span className={`text-xs font-medium px-2 py-1 rounded ${
+              <span data-testid="sync-status" className={`text-xs font-medium px-2 py-1 rounded ${
                 isOnline 
                   ? syncStatus === 'synced' 
                     ? 'bg-green-100 text-green-700' 
@@ -672,6 +674,7 @@ const SpreadsheetView: React.FC<{
           <button 
             onClick={onReload}
             disabled={!isOnline}
+            data-testid="btn-sync"
             className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-xl text-xs font-black hover:bg-slate-700 transition shadow-lg disabled:opacity-50"
             title="Recarregar dados do servidor"
           >
@@ -681,6 +684,7 @@ const SpreadsheetView: React.FC<{
           <button 
             onClick={onUpdateAndSave}
             disabled={isUpdating}
+            data-testid="btn-update-data"
             className={`flex items-center gap-2 px-4 py-2 ${isUpdating ? 'bg-slate-400' : 'bg-blue-600'} text-white rounded-xl text-xs font-black hover:bg-blue-700 transition shadow-lg disabled:cursor-not-allowed`}
           >
             {isUpdating ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
@@ -689,25 +693,27 @@ const SpreadsheetView: React.FC<{
 
           <button 
             onClick={handleExcelExport}
+            data-testid="btn-export-excel"
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition shadow-lg"
           >
             <FileDown size={14} /> Exportar Excel
           </button>
 
-          <label className={`flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 transition shadow-lg cursor-pointer text-center`}>
+          <label className={`flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 transition shadow-lg cursor-pointer text-center`} data-testid="btn-import-excel">
             <FileUp size={14} />
             Importar Excel
-            <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={onExcelImport} />
+            <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={onExcelImport} data-testid="import-excel-input" />
           </label>
           
-          <label className={`flex items-center gap-2 px-4 py-2 ${isScanning ? 'bg-slate-400' : 'bg-amber-500'} text-white rounded-xl text-xs font-black hover:bg-amber-600 transition shadow-lg cursor-pointer text-center`}>
+          <label className={`flex items-center gap-2 px-4 py-2 ${isScanning ? 'bg-slate-400' : 'bg-amber-500'} text-white rounded-xl text-xs font-black hover:bg-amber-600 transition shadow-lg cursor-pointer text-center`} data-testid="btn-scan-ai">
             {isScanning ? <Clock size={14} className="animate-spin" /> : <Scan size={14} />}
             {isScanning ? 'Lendo Imagem...' : 'Escanear IA'}
-            {!isScanning && <input type="file" className="hidden" accept="image/*" onChange={onScan} />}
+            {!isScanning && <input type="file" className="hidden" accept="image/*" onChange={onScan} data-testid="scan-ai-input" />}
           </label>
           
           <button 
             onClick={onAdd}
+            data-testid="btn-add-row"
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-black hover:bg-green-700 transition shadow-lg"
           >
             <Plus size={14} /> Nova Linha
@@ -715,8 +721,8 @@ const SpreadsheetView: React.FC<{
         </div>
       </div>
       
-      <div className="overflow-auto flex-grow bg-white">
-        <table className="w-full text-left text-[11px] border-collapse table-auto min-w-[3600px]">
+      <div className="overflow-auto flex-grow bg-white" data-testid="spreadsheet-container">
+        <table className="w-full text-left text-[11px] border-collapse table-auto min-w-[3600px]" data-testid="spreadsheet-table">
           <thead className="sticky top-0 bg-slate-100 shadow-sm z-10 font-black uppercase tracking-widest text-slate-500">
             <tr>
               <th className="p-4 border-b border-r border-slate-200">Produto (Frente)</th>
@@ -746,16 +752,17 @@ const SpreadsheetView: React.FC<{
               <th className="p-4 border-b border-slate-200 text-center">Excluir</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100" data-testid="spreadsheet-body">
             {data.map((row) => {
               const isEscalationDisabled = row.daysBlocked === 0 && row.status !== 'Bloqueada';
               return (
-                <tr key={row.id} className={`hover:bg-blue-50/40 transition-colors group ${row.outOfScope ? 'bg-slate-50/50 opacity-60' : ''}`}>
-                  <td className="p-2 border-r border-slate-100">
+                <tr key={row.id} data-testid={`row-${row.id}`} data-row-id={row.id} className={`hover:bg-blue-50/40 transition-colors group ${row.outOfScope ? 'bg-slate-50/50 opacity-60' : ''}`}>
+                  <td className="p-2 border-r border-slate-100" data-field="product">
                     <EditableInput value={row.product} onChange={(v) => onEdit(row.id, 'product', v)} bold />
                   </td>
-                  <td className="p-2 border-r border-slate-100">
+                  <td className="p-2 border-r border-slate-100" data-field="gherkin">
                     <EditableSelect value={row.gherkin || ''} onChange={(v) => onEdit(row.id, 'gherkin', v)} />
+                  </td>
                   </td>
                   <td className="p-2 border-r border-slate-100">
                     <EditableSelect value={row.environment || ''} onChange={(v) => onEdit(row.id, 'environment', v)} />
@@ -954,10 +961,10 @@ const ExecutivePanelView: React.FC<{
   };
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12" data-testid="executive-panel">
       <div className="flex justify-between items-center max-w-7xl mx-auto">
         <h3 className="text-slate-500 text-sm font-black tracking-widest uppercase">Painel Executivo (Sincronizado via Backoffice)</h3>
-        <button onClick={handleExport} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-xl font-black text-sm">
+        <button onClick={handleExport} data-testid="btn-export-image" className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-xl font-black text-sm">
           <Download size={18} /> Exportar Imagem
         </button>
       </div>
@@ -966,26 +973,26 @@ const ExecutivePanelView: React.FC<{
         <div className="p-10 bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl space-y-10">
           <h2 className="text-4xl font-black text-[#004e92] text-center tracking-tight">Status do Projeto – Visão Executiva</h2>
           
-          <div className="grid grid-cols-3 gap-8 text-center">
-            <div className="bg-[#00529b] text-white p-8 rounded-3xl">
+          <div className="grid grid-cols-3 gap-8 text-center" data-testid="kpi-cards">
+            <div className="bg-[#00529b] text-white p-8 rounded-3xl" data-testid="kpi-frentes">
               <p className="text-5xl font-black">{metrics.activeFronts}</p>
               <p className="text-lg font-bold">Frentes Ativas</p>
             </div>
-            <div className="bg-[#6aa84f] text-white p-8 rounded-3xl">
+            <div className="bg-[#6aa84f] text-white p-8 rounded-3xl" data-testid="kpi-stakeholders">
               <p className="text-5xl font-black">{metrics.mappedStakeholders}</p>
               <p className="text-lg font-bold">Stakeholders</p>
             </div>
-            <div className={`p-8 rounded-3xl border-4 ${metrics.riskLevel.includes('Alto') ? 'bg-red-50 border-red-500 text-red-600' : 'bg-green-50 border-green-500 text-green-600'}`}>
+            <div className={`p-8 rounded-3xl border-4 ${metrics.riskLevel.includes('Alto') ? 'bg-red-50 border-red-500 text-red-600' : 'bg-green-50 border-green-500 text-green-600'}`} data-testid="kpi-risk">
               <p className="text-4xl font-black uppercase text-center leading-tight">EM<br/>ANDAMENTO</p>
               <p className="text-lg font-bold">{metrics.riskLevel}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-8">
-            <div className="space-y-6">
+            <div className="space-y-6" data-testid="fronts-completeness">
               <h4 className="text-xl font-black text-slate-800 flex items-center gap-3"><Target className="text-blue-600" /> Plenitude Técnica (Evolução por Frente)</h4>
               {fronts.map(f => (
-                <div key={f.frontName} className={`p-6 rounded-2xl border ${f.outOfScope ? 'bg-slate-50 opacity-50' : 'bg-white shadow-sm space-y-4'}`}>
+                <div key={f.frontName} data-testid={`front-${f.frontName.replace(/\s/g, '-').toLowerCase()}`} className={`p-6 rounded-2xl border ${f.outOfScope ? 'bg-slate-50 opacity-50' : 'bg-white shadow-sm space-y-4'}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-black text-slate-800 text-lg uppercase">{f.frontName}</p>
@@ -1100,13 +1107,13 @@ const MiniPill: React.FC<{ active: boolean; label: string }> = ({ active, label 
 
 const MapaStakeholdersView: React.FC<{ mapping: FrontStakeholderMapping[] }> = ({ mapping }) => {
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto" data-testid="stakeholder-map">
       <h3 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
         <Layers className="text-blue-600" /> Mapa de Frentes X Stakeholders
       </h3>
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-6" data-testid="stakeholder-cards">
         {mapping.map((map, idx) => (
-          <div key={idx} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div key={idx} data-testid={`stakeholder-card-${idx}`} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
             <span className="text-[10px] font-black uppercase bg-blue-50 text-blue-700 px-3 py-1 rounded-full">{map.status}</span>
             <h4 className="text-lg font-black text-slate-800 mt-4 mb-4">{map.frontName}</h4>
             <div className="space-y-2">
@@ -1161,25 +1168,25 @@ const LogbookView: React.FC<{ data: SpreadsheetRow[] }> = ({ data }) => {
   }, [data]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8" data-testid="logbook">
       <div className="flex items-center justify-between">
         <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
           <BookOpen className="text-blue-600" /> Diário de Bordo QA
         </h3>
-        <div className="flex gap-4">
-          <div className="bg-green-50 px-4 py-2 rounded-xl">
+        <div className="flex gap-4" data-testid="logbook-summary">
+          <div className="bg-green-50 px-4 py-2 rounded-xl" data-testid="summary-realizadas">
             <span className="text-2xl font-black text-green-600">{statusSummary.Realizada}</span>
             <span className="text-xs font-bold text-green-600 ml-2">Realizadas</span>
           </div>
-          <div className="bg-blue-50 px-4 py-2 rounded-xl">
+          <div className="bg-blue-50 px-4 py-2 rounded-xl" data-testid="summary-pendentes">
             <span className="text-2xl font-black text-blue-600">{statusSummary.Pendente}</span>
             <span className="text-xs font-bold text-blue-600 ml-2">Pendentes</span>
           </div>
-          <div className="bg-amber-50 px-4 py-2 rounded-xl">
+          <div className="bg-amber-50 px-4 py-2 rounded-xl" data-testid="summary-inefetivas">
             <span className="text-2xl font-black text-amber-600">{statusSummary.Inefetiva}</span>
             <span className="text-xs font-bold text-amber-600 ml-2">Inefetivas</span>
           </div>
-          <div className="bg-red-50 px-4 py-2 rounded-xl">
+          <div className="bg-red-50 px-4 py-2 rounded-xl" data-testid="summary-bloqueadas">
             <span className="text-2xl font-black text-red-600">{statusSummary.Bloqueada}</span>
             <span className="text-xs font-bold text-red-600 ml-2">Bloqueadas</span>
           </div>
@@ -1188,13 +1195,13 @@ const LogbookView: React.FC<{ data: SpreadsheetRow[] }> = ({ data }) => {
 
       <div className="grid grid-cols-3 gap-6">
         {/* Timeline de Atividades Recentes */}
-        <div className="col-span-2 bg-white p-8 rounded-3xl border shadow-sm">
+        <div className="col-span-2 bg-white p-8 rounded-3xl border shadow-sm" data-testid="timeline-container">
           <h4 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
             <Clock className="text-blue-500" /> Atividades Recentes
           </h4>
-          <div className="relative border-l-4 border-slate-100 ml-4 pl-8 space-y-6">
+          <div className="relative border-l-4 border-slate-100 ml-4 pl-8 space-y-6" data-testid="timeline">
             {recentActivities.map((row, idx) => (
-              <div key={row.id} className="relative">
+              <div key={row.id} className="relative" data-testid={`timeline-entry-${idx}`}>
                 <div className={`absolute -left-[38px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${
                   row.status === 'Realizada' ? 'bg-green-500' : 
                   row.status === 'Bloqueada' ? 'bg-red-500' : 
