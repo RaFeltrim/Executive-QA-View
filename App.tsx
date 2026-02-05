@@ -513,18 +513,13 @@ const App: React.FC = () => {
       let updatedRow = { ...r, [field]: value };
       
       // LÓGICA ESPECIAL: Quando a DATA muda e o status é 'Inefetiva', move a data ANTERIOR para o histórico
-      // Isso permite que o usuário veja as datas das agendas inefetivas anteriores
+      // Isso permite que o usuário veja as datas das agendas inefetivas anteriores (histórico permanece mesmo após Realizada)
       if (field === 'date' && r.status === 'Inefetiva' && r.date && r.date !== value) {
         const currentHistory = r.dateHistory || [];
         // Só adiciona se a data anterior ainda não estiver no histórico
         if (!currentHistory.includes(r.date)) {
           updatedRow.dateHistory = [...currentHistory, r.date];
         }
-      }
-      
-      // LÓGICA: Quando status muda para 'Realizada', limpa o histórico
-      if (field === 'status' && value === 'Realizada') {
-        updatedRow.dateHistory = [];
       }
       
       // LÓGICA: Calcular dias bloqueados automaticamente quando contactDate é alterado
@@ -550,11 +545,6 @@ const App: React.FC = () => {
             await dbUpdateRow(id, { [field]: value, dateHistory: newHistory });
             return;
           }
-        }
-        // Se mudou status para Realizada, limpar histórico
-        if (field === 'status' && value === 'Realizada') {
-          await dbUpdateRow(id, { [field]: value, dateHistory: [] });
-          return;
         }
         await dbUpdateRow(id, { [field]: value });
       } catch (err) {
